@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Matriz de Riesgo Crediticio IA - CAJA INTELIGENTE{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h2 class="content-title">Matriz de Riesgo Crediticio y Monitoreo de Cartera IA</h2>
+    <div class="content-subtitle">
+      Distribución de cartera por bandas de scoring crediticio, exposición al riesgo y alertas preventivas &bull; CMAC Perú
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('reportes.exportar_pdf', tipo='evaluaciones') }}" class="btn btn-fintech-outline">
+      <i class="fa-solid fa-file-pdf me-1"></i>Descargar Dictámenes PDF
+    </a>
+  </div>
+</div>
+
+<!-- TARJETAS DE BANDA DE RIESGO -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div>
+        <div class="kpi-label">Total Evaluaciones IA</div>
+        <div class="kpi-value text-navy">{{ total_eval }}</div>
+        <div class="kpi-subtext text-muted">Solicitudes analizadas</div>
+      </div>
+      <div class="kpi-icon-box kpi-icon-blue"><i class="fa-solid fa-chart-simple"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div>
+        <div class="kpi-label">Riesgo Bajo (Aptos)</div>
+        <div class="kpi-value text-success">{{ bajo_cnt }}</div>
+        <div class="kpi-subtext text-success">
+          <i class="fa-solid fa-circle-check"></i> Score &ge; 75 pts &bull; DTI &le; 35%
+        </div>
+      </div>
+      <div class="kpi-icon-box kpi-icon-green"><i class="fa-solid fa-shield-halved"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div>
+        <div class="kpi-label">Riesgo Medio (En Observación)</div>
+        <div class="kpi-value text-warning">{{ medio_cnt }}</div>
+        <div class="kpi-subtext text-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i> Requiere garantías
+        </div>
+      </div>
+      <div class="kpi-icon-box kpi-icon-amber"><i class="fa-solid fa-shield-exclamation"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div>
+        <div class="kpi-label">Riesgo Alto (Críticos)</div>
+        <div class="kpi-value text-danger">{{ alto_cnt }}</div>
+        <div class="kpi-subtext text-danger">
+          <i class="fa-solid fa-circle-xmark"></i> Sobreendeudamiento
+        </div>
+      </div>
+      <div class="kpi-icon-box kpi-icon-red"><i class="fa-solid fa-shield-virus"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- FILTRO POR BANDA DE RIESGO -->
+<div class="custom-card p-3 mb-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div class="btn-group" role="group">
+      <a href="{{ url_for('riesgos.index') }}" class="btn btn-sm {% if not filtro_nivel %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+        Todas las Evaluaciones ({{ total_eval }})
+      </a>
+      <a href="{{ url_for('riesgos.index', nivel='BAJO') }}" class="btn btn-sm {% if filtro_nivel == 'BAJO' %}btn-success{% else %}btn-outline-success{% endif %}">
+        ● Riesgo Bajo ({{ bajo_cnt }})
+      </a>
+      <a href="{{ url_for('riesgos.index', nivel='MEDIO') }}" class="btn btn-sm {% if filtro_nivel == 'MEDIO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %}">
+        ● Riesgo Medio ({{ medio_cnt }})
+      </a>
+      <a href="{{ url_for('riesgos.index', nivel='ALTO') }}" class="btn btn-sm {% if filtro_nivel == 'ALTO' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+        ● Riesgo Alto ({{ alto_cnt }})
+      </a>
+    </div>
+
+    <div>
+      <input type="text" class="form-control form-control-sm form-control-fintech table-search-input" 
+             placeholder="Filtrar en tabla..." data-target-table="tablaRiesgos" style="width: 240px;">
+    </div>
+  </div>
+</div>
+
+<!-- TABLA DE EVALUACIONES -->
+<div class="custom-card">
+  <div class="card-header-custom">
+    <h5 class="card-header-title">
+      <i class="fa-solid fa-network-wired text-primary"></i>
+      Expedientes Evaluados por Inteligencia Artificial
+    </h5>
+  </div>
+  <div class="p-0 table-responsive">
+    <table class="table-fintech" id="tablaRiesgos">
+      <thead>
+        <tr>
+          <th>Solicitud</th>
+          <th>Cliente / DNI</th>
+          <th>Monto / Tipo</th>
+          <th>Score IA</th>
+          <th>Nivel Riesgo</th>
+          <th>Mora 30d</th>
+          <th>Mora 90d</th>
+          <th>Dictamen Humano</th>
+          <th>Modelo Utilizado</th>
+          <th class="text-end">Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in evaluaciones %}
+        <tr>
+          <td class="fw-bold text-navy">{{ ev.numero_solicitud }}</td>
+          <td>
+            <div class="fw-bold">{{ ev.nombres }} {{ ev.apellidos }}</div>
+            <small class="text-muted">DNI: {{ ev.dni }}</small>
+          </td>
+          <td>
+            <div class="fw-semibold">S/. {{ "{:,.2f}".format(ev.monto_solicitado) }}</div>
+            <small class="text-muted">{{ ev.tipo_credito }}</small>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border fw-bold px-2 py-1">
+              {{ ev.score_riesgo }} / 100
+            </span>
+          </td>
+          <td>
+            {% if ev.nivel_riesgo == 'BAJO' %}
+              <span class="badge-risk badge-risk-low">● Bajo</span>
+            {% elif ev.nivel_riesgo == 'MEDIO' %}
+              <span class="badge-risk badge-risk-medium">● Medio</span>
+            {% else %}
+              <span class="badge-risk badge-risk-high">● Alto</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="small fw-bold {% if ev.probabilidad_morosidad_30d > 30 %}text-danger{% else %}text-muted{% endif %}">
+              {{ ev.probabilidad_morosidad_30d }}%
+            </span>
+          </td>
+          <td>
+            <span class="small fw-bold {% if ev.probabilidad_morosidad_90d > 50 %}text-danger{% else %}text-muted{% endif %}">
+              {{ ev.probabilidad_morosidad_90d }}%
+            </span>
+          </td>
+          <td>
+            <span class="badge {% if ev.dictamen_humano == 'CONFORME' %}bg-success-subtle text-success{% elif ev.dictamen_humano == 'DENEGADO' %}bg-danger-subtle text-danger{% elif ev.dictamen_humano == 'REQUIERE_GARANTIA' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %} fw-bold">
+              {{ ev.dictamen_humano }}
+            </span>
+          </td>
+          <td><span class="badge bg-light text-secondary border small">{{ ev.modelo_ia_utilizado }}</span></td>
+          <td class="text-end">
+            <a href="{{ url_for('riesgos.evaluar', solicitud_id=ev.solicitud_id) }}" class="btn btn-sm btn-outline-primary py-1 px-2" title="Ver Análisis Completo">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-center py-5 text-muted">
+            <i class="fa-solid fa-shield-check fs-2 mb-2 d-block"></i>
+            No se registran evaluaciones para los filtros seleccionados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

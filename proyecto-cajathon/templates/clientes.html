@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Clientes 360° - CAJA INTELIGENTE{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h2 class="content-title">Gestión de Clientes y Perfil Financiero 360°</h2>
+    <div class="content-subtitle">
+      Administración centralizada de expedientes, ingresos verificados y categorización de riesgo SBS
+    </div>
+  </div>
+  <div>
+    <button type="button" class="btn btn-fintech-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente">
+      <i class="fa-solid fa-user-plus me-1"></i>Registrar Nuevo Cliente
+    </button>
+  </div>
+</div>
+
+<!-- FILTROS Y BÚSQUEDA -->
+<div class="custom-card p-3 mb-4">
+  <form method="GET" action="{{ url_for('clientes.index') }}" class="row g-3 align-items-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="input-group">
+        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+        <input type="text" name="q" class="form-control form-control-fintech border-start-0" 
+               placeholder="Buscar por DNI, nombres, apellidos, código o actividad económica..." 
+               value="{{ q }}">
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <select name="nivel" class="form-select form-select-fintech" onchange="this.form.submit()">
+        <option value="">Todos los Niveles de Riesgo</option>
+        <option value="BAJO" {% if nivel_filtro == 'BAJO' %}selected{% endif %}>Riesgo Bajo (Apto)</option>
+        <option value="MEDIO" {% if nivel_filtro == 'MEDIO' %}selected{% endif %}>Riesgo Medio (En Observación)</option>
+        <option value="ALTO" {% if nivel_filtro == 'ALTO' %}selected{% endif %}>Riesgo Alto (Crítico)</option>
+      </select>
+    </div>
+    <div class="col-md-2 col-lg-2">
+      <button type="submit" class="btn btn-fintech-dark w-100">
+        <i class="fa-solid fa-filter me-1"></i>Filtrar
+      </button>
+    </div>
+    {% if q or nivel_filtro %}
+    <div class="col-auto">
+      <a href="{{ url_for('clientes.index') }}" class="btn btn-link text-decoration-none text-secondary">
+        <i class="fa-solid fa-xmark me-1"></i>Limpiar
+      </a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- TABLA DE CLIENTES -->
+<div class="custom-card">
+  <div class="card-header-custom">
+    <h5 class="card-header-title">
+      <i class="fa-solid fa-address-book text-primary"></i>
+      Padrón de Clientes Registrados ({{ clientes | length }})
+    </h5>
+  </div>
+  <div class="p-0 table-responsive">
+    <table class="table-fintech" id="tablaClientes">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cliente / DNI</th>
+          <th>Edad / Ocupación</th>
+          <th>Ingresos Mensuales</th>
+          <th>Gastos / Deudas</th>
+          <th>Score IA</th>
+          <th>Riesgo SBS</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cli in clientes %}
+        <tr>
+          <td class="fw-bold text-secondary">{{ cli.codigo_cliente }}</td>
+          <td>
+            <div class="fw-bold text-navy">{{ cli.nombres }} {{ cli.apellidos }}</div>
+            <div class="small text-muted"><i class="fa-regular fa-id-card me-1"></i>DNI: <strong>{{ cli.dni }}</strong></div>
+          </td>
+          <td>
+            <div class="fw-semibold">{{ cli.ocupacion }}</div>
+            <small class="text-muted">{{ cli.edad }} años &bull; {{ cli.sector_economico }}</small>
+          </td>
+          <td class="fw-bold text-success">
+            S/. {{ "{:,.2f}".format(cli.ingresos_mensuales) }}
+          </td>
+          <td>
+            <div class="small text-danger">Gastos: S/. {{ "{:,.2f}".format(cli.gastos_mensuales) }}</div>
+            <div class="small text-muted">Deudas: S/. {{ "{:,.2f}".format(cli.deudas_actuales) }}</div>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border fw-bold px-2 py-1">
+              <i class="fa-solid fa-gauge-high text-primary me-1"></i>{{ cli.score_interno }} / 100
+            </span>
+          </td>
+          <td>
+            {% if cli.nivel_riesgo == 'BAJO' %}
+              <span class="badge-risk badge-risk-low">● Bajo</span>
+            {% elif cli.nivel_riesgo == 'MEDIO' %}
+              <span class="badge-risk badge-risk-medium">● Medio</span>
+            {% else %}
+              <span class="badge-risk badge-risk-high">● Alto</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="btn-group">
+              <a href="{{ url_for('clientes.detalle', id=cli.id) }}" class="btn btn-sm btn-outline-primary" title="Perfil 360°">
+                <i class="fa-solid fa-eye"></i>
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ cli.id }}" title="Editar">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ cli.id }}" title="Eliminar">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- MODAL EDITAR CLIENTE -->
+        <div class="modal fade" id="modalEditar{{ cli.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen text-primary me-2"></i>Editar Cliente: {{ cli.nombres }} {{ cli.apellidos }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="POST" action="{{ url_for('clientes.editar', id=cli.id) }}">
+                <div class="modal-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Nombres</label>
+                      <input type="text" name="nombres" class="form-control form-control-fintech" value="{{ cli.nombres }}" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Apellidos</label>
+                      <input type="text" name="apellidos" class="form-control form-control-fintech" value="{{ cli.apellidos }}" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Edad</label>
+                      <input type="number" name="edad" class="form-control form-control-fintech" value="{{ cli.edad }}" required>
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label-fintech">Ocupación / Actividad Comercial</label>
+                      <input type="text" name="ocupacion" class="form-control form-control-fintech" value="{{ cli.ocupacion }}" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Ingresos Mensuales (S/.)</label>
+                      <input type="number" step="0.01" name="ingresos_mensuales" class="form-control form-control-fintech" value="{{ cli.ingresos_mensuales }}" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Gastos Mensuales (S/.)</label>
+                      <input type="number" step="0.01" name="gastos_mensuales" class="form-control form-control-fintech" value="{{ cli.gastos_mensuales }}" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Deudas Actuales en Sistema (S/.)</label>
+                      <input type="number" step="0.01" name="deudas_actuales" class="form-control form-control-fintech" value="{{ cli.deudas_actuales }}" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Teléfono / Celular</label>
+                      <input type="text" name="telefono" class="form-control form-control-fintech" value="{{ cli.telefono }}">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Correo Electrónico</label>
+                      <input type="email" name="email" class="form-control form-control-fintech" value="{{ cli.email }}">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label-fintech">Dirección Domiciliaria / Negocio</label>
+                      <input type="text" name="direccion" class="form-control form-control-fintech" value="{{ cli.direccion }}">
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-fintech-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL CONFIRMACIÓN ELIMINAR -->
+        <div class="modal fade" id="modalEliminar{{ cli.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body text-center py-4">
+                <i class="fa-solid fa-user-xmark fs-1 text-danger mb-3"></i>
+                <h5>¿Está seguro de eliminar al cliente?</h5>
+                <p class="text-muted mb-0"><strong>{{ cli.nombres }} {{ cli.apellidos }}</strong> (DNI: {{ cli.dni }})</p>
+                <small class="text-secondary">Esta acción eliminará también sus solicitudes y pagos asociados en cascada.</small>
+              </div>
+              <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('clientes.eliminar', id=cli.id) }}">
+                  <button type="submit" class="btn btn-danger px-4"><i class="fa-solid fa-trash me-1"></i>Sí, Eliminar</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="fa-solid fa-user-slash fs-2 mb-2 d-block"></i>
+            No se encontraron clientes que coincidan con los criterios de búsqueda.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL REGISTRAR NUEVO CLIENTE -->
+<div class="modal fade" id="modalNuevoCliente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-primary me-2"></i>Registrar Nuevo Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('clientes.crear') }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-fintech">Nombres *</label>
+              <input type="text" name="nombres" class="form-control form-control-fintech" placeholder="Ej. Juan Carlos" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-fintech">Apellidos *</label>
+              <input type="text" name="apellidos" class="form-control form-control-fintech" placeholder="Ej. Quispe Mamani" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">DNI (8 dígitos) *</label>
+              <input type="text" name="dni" maxlength="8" class="form-control form-control-fintech" placeholder="Ej. 45871234" required pattern="[0-9]{8}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Edad *</label>
+              <input type="number" name="edad" min="18" max="95" class="form-control form-control-fintech" value="35" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Sector Económico</label>
+              <select name="sector_economico" class="form-select form-select-fintech">
+                <option value="Comercio">Comercio Minorista / Mayorista</option>
+                <option value="Manufactura Textil">Manufactura / Confecciones</option>
+                <option value="Transporte y Logística">Transporte y Logística</option>
+                <option value="Servicios">Servicios Generales</option>
+                <option value="Gastronomía">Gastronomía y Alimentos</option>
+                <option value="Agropecuario">Agropecuario</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label-fintech">Ocupación / Actividad Comercial *</label>
+              <input type="text" name="ocupacion" class="form-control form-control-fintech" placeholder="Ej. Venta de Abarrotes en Mercado Central" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Departamento / Región</label>
+              <input type="text" name="departamento" class="form-control form-control-fintech" value="Lima">
+            </div>
+            
+            <div class="col-12 mt-3">
+              <h6 class="fw-bold text-navy border-bottom pb-2">Información Financiera Declarada</h6>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label-fintech">Ingresos Mensuales (S/.) *</label>
+              <input type="number" step="0.01" name="ingresos_mensuales" class="form-control form-control-fintech" placeholder="4500.00" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Gastos Mensuales (S/.) *</label>
+              <input type="number" step="0.01" name="gastos_mensuales" class="form-control form-control-fintech" placeholder="2100.00" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Deudas Actuales en Sistema (S/.)</label>
+              <input type="number" step="0.01" name="deudas_actuales" class="form-control form-control-fintech" value="0.00">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label-fintech">Teléfono / WhatsApp</label>
+              <input type="text" name="telefono" class="form-control form-control-fintech" placeholder="984123456">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-fintech">Correo Electrónico</label>
+              <input type="email" name="email" class="form-control form-control-fintech" placeholder="cliente@correo.com">
+            </div>
+            <div class="col-12">
+              <label class="form-label-fintech">Dirección Domiciliaria / Negocio</label>
+              <input type="text" name="direccion" class="form-control form-control-fintech" placeholder="Av. Los Héroes 450, San Juan de Miraflores">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-fintech-primary"><i class="fa-solid fa-user-check me-1"></i>Registrar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
