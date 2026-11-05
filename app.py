@@ -78,3 +78,4 @@ if __name__ == '__main__':
     print(f"  Servidor local activo en: http://127.0.0.1:{port}")
     print("="*70 + "\n")
     app.run(host='0.0.0.0', port=port, debug=debug)
+

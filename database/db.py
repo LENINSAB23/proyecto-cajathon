@@ -269,3 +269,4 @@ def init_db():
         print("[INFO] Datos de demostración sembrados con éxito (17 clientes, 20 solicitudes, pagos, alertas, historial).")
 
     conn.close()
+

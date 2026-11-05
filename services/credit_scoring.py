@@ -186,3 +186,4 @@ def calcular_scoring_analitico(datos: dict) -> dict:
         "pts_historial": pts_historial,
         "pts_laboral": pts_laboral
     }
+

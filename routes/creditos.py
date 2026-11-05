@@ -142,3 +142,4 @@ def crear():
     except Exception as e:
         flash(f'Error al crear solicitud: {str(e)}', 'danger')
         return redirect(url_for('creditos.index'))
+

@@ -174,3 +174,4 @@ def eliminar(id):
     else:
         flash('Cliente no encontrado.', 'warning')
     return redirect(url_for('clientes.index'))
+

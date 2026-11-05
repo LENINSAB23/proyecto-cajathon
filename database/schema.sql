@@ -270,3 +270,4 @@ CREATE POLICY "Acceso demo anon evaluaciones" ON evaluaciones_riesgo FOR ALL TO 
 CREATE POLICY "Acceso demo anon pagos" ON pagos FOR ALL TO anon USING (true);
 CREATE POLICY "Acceso demo anon alertas" ON alertas FOR ALL TO anon USING (true);
 CREATE POLICY "Acceso demo anon historial" ON historial_crediticio FOR ALL TO anon USING (true);
+

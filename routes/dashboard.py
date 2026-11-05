@@ -107,3 +107,4 @@ def chart_data():
             'aprobado': montos_aprobados
         }
     })
+

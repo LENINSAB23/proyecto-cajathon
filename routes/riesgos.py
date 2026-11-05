@@ -201,3 +201,4 @@ def dictamen_humano(solicitud_id):
 
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
+

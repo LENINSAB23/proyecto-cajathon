@@ -198,3 +198,4 @@ def generar_evaluacion_heuristica_ia(solicitud: dict, cliente: dict, metricas: d
         "es_modo_demo": True,
         "aviso_legal": "Evaluación asistida por Inteligencia Artificial orientada a la toma de decisión humana. Cumple con la normativa de gestión de riesgo crediticio SBS Resolución N° 11356-2008."
     }
+

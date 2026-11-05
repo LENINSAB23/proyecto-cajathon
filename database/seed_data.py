@@ -1160,3 +1160,4 @@ def get_demo_historial():
             "estado_credito": "REFINANCIADO"
         }
     ]
+

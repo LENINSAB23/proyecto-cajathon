@@ -131,3 +131,4 @@ def crear_alerta():
 
     flash('Alerta preventiva generada exitosamente y notificada al equipo de cobranzas.', 'success')
     return redirect(url_for('morosidad.index'))
+

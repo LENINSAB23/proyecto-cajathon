@@ -157,3 +157,4 @@ def exportar_pdf():
         as_attachment=True,
         download_name=filename
     )
+
