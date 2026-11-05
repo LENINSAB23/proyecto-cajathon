@@ -49,7 +49,7 @@ def login():
             session['user_avatar'] = user.get('avatar_url')
 
             execute_db("UPDATE usuarios SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
-            flash(f'¡Bienvenido a Caja Inteligente, {user["nombre"]}!', 'success')
+            flash(f'¡Bienvenido a Credit Risk, {user["nombre"]}!', 'success')
             next_url = request.args.get('next')
             return redirect(next_url or url_for('dashboard.index'))
         else:
@@ -75,7 +75,7 @@ def demo_login(role):
         session['user_cargo'] = user['cargo']
         session['user_agencia'] = user['agencia']
         session['user_avatar'] = user.get('avatar_url')
-        flash(f'Sesión iniciada en Modo Demostración como: {user["rol"]} ({user["nombre"]})', 'info')
+        flash(f'Sesión iniciada como: {user["rol"]} ({user["nombre"]})', 'info')
     return redirect(url_for('dashboard.index'))
 
 @auth_bp.route('/logout')

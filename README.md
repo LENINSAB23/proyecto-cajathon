@@ -1,241 +1,105 @@
-# 🏛️ CAJA INTELIGENTE
+# 🏛️ Credit Risk
 ### Sistema de Evaluación de Riesgo Crediticio y Prevención de Morosidad con Inteligencia Artificial
-> **Especialidad:** Riesgos Financieros y Microfinanzas para Cajas Municipales de Ahorro y Crédito (CMAC) del Perú  
-> **Cumplimiento Regulatorio:** Superintendencia de Banca, Seguros y AFP (SBS Perú - Resolución N° 11356-2008)
+> **Especialidad:** Gestión de Riesgos Financieros y Evaluación de Morosidad para Cajas Municipales de Ahorro y Crédito (CMAC) del Perú  
+> **Marco Regulatorio:** Superintendencia de Banca, Seguros y AFP (SBS Perú - Resolución N° 11356-2008)
 
 ---
 
 ## 📌 1. Visión General del Proyecto
 
-**CAJA INTELIGENTE** es una plataforma web fintech de nivel empresarial diseñada específicamente para las Cajas Municipales del Perú (CMAC Arequipa, Huancayo, Piura, Cusco, etc.). 
+**Credit Risk** es una plataforma web orientada al sector financiero y de microfinanzas, diseñada para asistir a los analistas y comités de crédito de las Cajas Municipales en la toma de decisiones informadas, transparentes y seguras.
 
-Su propósito fundamental es modernizar el proceso de admisión crediticia y gestión de cobranzas mediante:
-1. **Scoring Crediticio Cuantitativo:** Cálculo automático de ratios financieros clave (DTI, Capacidad de Pago ponderada, Cuota fija francesa).
-2. **Evaluación Cualitativa con Inteligencia Artificial (OpenAI GPT-4o-mini & Motor Heurístico SBS):** Generación de dictámenes explicativos, factores positivos, debilidades, alertas tempranas (Red Flags) y probabilidades de morosidad a 30 y 90 días.
-3. **Decisión Humana Vinculante:** Asistencia al analista financiero sin sustituir el criterio del comité humano.
-4. **Gestión Proactiva de Morosidad:** Detección de cuotas vencidas, días de atraso, penalidades y categorización oficial SBS (Normal, CPP, Deficiente, Dudoso, Pérdida).
-5. **Auditoría y Reportes:** Exportación ejecutiva a PDF con membrete institucional y hojas de cálculo Excel (.xlsx).
+El sistema aborda dos de los principales desafíos en la gestión crediticia:
+1. **Evaluación Rigurosa del Riesgo:** Análisis multifactorial de la solvencia del solicitante, combinando ratios financieros tradicionales con modelos avanzados de inteligencia artificial.
+2. **Detección Temprana y Prevención de Morosidad:** Monitoreo constante del comportamiento de pago, alertas preventivas ante descalces de liquidez y clasificación de cartera conforme a la normativa SBS.
 
 ---
 
-## 💻 2. Stack Tecnológico
+## 💻 2. Módulos del Sistema
 
-- **Backend:** Python 3.10+ / Flask 3.x (Arquitectura modular con Blueprints).
-- **Servidor de Producción:** Gunicorn.
-- **Base de Datos Cloud:** Supabase PostgreSQL (esquema DDL completo con políticas de seguridad RLS e índices de alto rendimiento).
-- **Base de Datos Local / Fallback:** SQLite 3 integrado con autosembrado instantáneo de datos de demostración (cero fricción en evaluación).
-- **Inteligencia Artificial:** OpenAI API (`gpt-4o-mini`) + Motor de Inferencia Heurística Local para modo demostración sin conexión.
-- **Frontend:** HTML5 semántico, CSS3 Fintech profesional (estética banking en azul noche, blanco y acentos cyan), JavaScript Vanilla, Bootstrap 5.3 y FontAwesome 6.
-- **Visualización Gráfica:** Chart.js (Donut de distribución de riesgos y barras de colocaciones).
-- **Generación de Reportes:** ReportLab (PDF) y OpenPyXL (Excel).
-- **Despliegue:** Render / Docker ready (`Procfile`, `render.yaml`).
+### Módulo 1: Dashboard Financiero
+- Indicadores clave de desempeño (KPIs): Total de colocaciones, clientes registrados, créditos aprobados, solicitudes en trámite, porcentaje de morosidad y clientes clasificados en riesgo alto.
+- Gráficos interactivos de evolución mensual de colocaciones y distribución de cartera por niveles de riesgo.
+- Notificaciones de actividad reciente y alertas financieras de atención inmediata.
 
----
+### Módulo 2: Gestión de Clientes 360°
+- Expediente digital completo del cliente: historial laboral, actividad económica, ingresos mensuales, gastos fijos y pasivos vigentes.
+- Consulta centralizada y verificación de antecedentes en centrales de riesgo.
+- Búsqueda y filtrado multicriterio por DNI, nombres o nivel de solvencia.
 
-## 📂 3. Arquitectura del Proyecto
+### Módulo 3: Admisión y Evaluación de Créditos
+- Simulador financiero en tiempo real: cálculo inmediato de la cuota mensual mediante el método de amortización francés.
+- Evaluación de indicadores clave: Capacidad de pago admisible, relación Deuda/Ingresos (DTI) y flujo neto disponible.
+- Semáforo automático de viabilidad financiera.
 
-```text
-cajathon/
-├── app.py                      # Punto de entrada de la aplicación Flask
-├── config.py                   # Configuración centralizada y variables de entorno
-├── requirements.txt            # Dependencias oficiales de producción
-├── Procfile                    # Comando de arranque para Render (Gunicorn)
-├── render.yaml                 # Configuración de infraestructura como código (Render Blueprint)
-├── .env.example                # Plantilla de variables de entorno seguras
-├── .gitignore                  # Exclusión de credenciales y archivos temporales
-├── README.md                   # Documentación técnica completa
-├── test_app.py                 # Suite de 14 pruebas automatizadas
-│
-├── database/
-│   ├── schema.sql              # DDL completo PostgreSQL para Supabase con RLS
-│   ├── db.py                   # Capa de abstracción de datos (Supabase / SQLite)
-│   └── seed_data.py            # Sembrado de 17 clientes, 20 solicitudes, pagos y alertas
-│
-├── routes/
-│   ├── __init__.py
-│   ├── auth.py                 # Inicio/cierre de sesión y control de acceso por roles
-│   ├── dashboard.py            # KPIs ejecutivos y endpoints de gráficos
-│   ├── clientes.py             # CRUD de clientes y expediente financiero 360°
-│   ├── creditos.py             # Solicitudes y simulador financiero interactivo
-│   ├── riesgos.py              # Matriz de riesgos y dictámenes con Inteligencia Artificial
-│   ├── morosidad.py            # Monitoreo de cartera vencida, pagos y alertas
-│   └── reportes.py             # Centro de descargas en PDF y Excel
-│
-├── services/
-│   ├── __init__.py
-│   ├── credit_scoring.py       # Fórmulas financieras SBS (DTI, Capacidad de pago, Cuota)
-│   ├── ia_service.py           # Cliente OpenAI y Motor Heurístico de Inferencia SBS
-│   └── report_service.py       # Generadores de documentos PDF (ReportLab) y Excel (OpenPyXL)
-│
-├── templates/
-│   ├── base.html               # Layout maestro (Sidebar, Topbar, Notificaciones)
-│   ├── login.html              # Login fintech con accesos rápidos de 1 clic para el jurado
-│   ├── dashboard.html          # Dashboard principal con métricas y Chart.js
-│   ├── clientes.html           # Padrón de clientes y modal de registro
-│   ├── cliente_detalle.html    # Expediente 360° con central de riesgos SBS
-│   ├── creditos.html           # Solicitudes y simulador en tiempo real
-│   ├── evaluacion.html         # Resultados de IA, score 0-100 y dictamen humano
-│   ├── riesgos_matriz.html     # Matriz general de cartera evaluada
-│   ├── morosidad.html          # Centro de cobranzas, abonos y alertas tempranas
-│   └── reportes.html           # Centro de descargas directas en PDF y Excel
-│
-└── static/
-    ├── css/
-    │   └── style.css           # Estilos fintech de alta gama inspirados en banca moderna
-    ├── js/
-    │   └── app.js              # Gráficos Chart.js, simulador reactivo y filtros de tabla
-    └── img/
-        └── logo.svg            # Isotipo institucional vectorizado
-```
+### Módulo 4: Análisis con Inteligencia Artificial
+- Evaluación explicativa cualitativa y cuantitativa que asigna un Score de Riesgo (0 a 100 puntos) y categoriza al cliente en:
+  - **Riesgo Bajo:** Condiciones financieras óptimas y solvencia verificada.
+  - **Riesgo Medio:** Requiere evaluación complementaria o garantías de respaldo.
+  - **Riesgo Alto:** Señales de sobreendeudamiento o déficit de liquidez.
+- Identificación estructurada de fortalezas financieras, vulnerabilidades operativas y alertas preventivas.
+- Estimación de probabilidades de incumplimiento a 30 y 90 días.
+- **Dictamen Humano Vinculante:** La IA actúa como soporte analítico para el oficial de créditos, garantizando que la decisión final sea siempre humana y conforme a políticas internas.
+
+### Módulo 5: Gestión y Prevención de Morosidad
+- Clasificación regulatoria de la cartera según directivas SBS:
+  - Categoría 0: Normal (atraso de 0 a 8 días).
+  - Categoría 1: Con Problemas Potenciales - CPP (atraso de 9 a 30 días).
+  - Categoría 2: Deficiente (atraso de 31 a 60 días).
+  - Categoría 3: Dudoso (atraso de 61 a 120 días).
+  - Categoría 4: Pérdida (atraso superior a 120 días).
+- Registro ágil de amortizaciones y cancelaciones de cuotas.
+- Generación de alertas de cobranza preventiva ante indicios de mora temprana.
+
+### Módulo 6: Centro de Reportes Financieros
+- Generación de reportes ejecutivos en formato **PDF** con membrete institucional para comités de riesgo y auditoría.
+- Exportación estructurada de cartera y vencimientos a **Excel (.xlsx)** para análisis contable y financiero.
 
 ---
 
-## 🧮 4. Modelos y Fórmulas Financieras (SBS / CMAC)
+## 🧮 3. Fundamentos y Fórmulas Financieras
 
-### A. Cálculo de Cuota Fija (Método Francés)
+### A. Cuota Fija Mensual (Sistema Francés)
 $$\text{Cuota} = \text{Monto} \times \frac{i \times (1+i)^n}{(1+i)^n - 1}$$
-Donde $i$ es la Tasa Efectiva Mensual (TEM, aprox. 2.8% en microfinanzas) y $n$ es el número de meses.
+Donde $i$ representa la Tasa Efectiva Mensual (TEM) y $n$ el plazo en meses.
 
-### B. Ratio Deuda / Ingresos (Debt-to-Income - DTI)
-$$\text{DTI} = \left( \frac{\text{Deudas Preexistentes} + \text{Cuota Mensual Proyectada}}{\text{Ingresos Mensuales Declarados}} \right) \times 100$$
-- **DTI $\le$ 35%:** Nivel Óptimo (Riesgo Bajo).
-- **35% $<$ DTI $\le$ 50%:** Nivel Moderado / Advertencia (Riesgo Medio).
-- **DTI $>$ 50%:** Sobreendeudamiento Crítico (Riesgo Alto).
+### B. Ratio de Endeudamiento Total (Debt-to-Income - DTI)
+$$\text{DTI} = \left( \frac{\text{Deudas Vigentes} + \text{Cuota Proyectada}}{\text{Ingresos Mensuales}} \right) \times 100$$
+- $\text{DTI} \le 35\%$: Endeudamiento prudencial y sostenible.
+- $35\% < \text{DTI} \le 50\%$: Endeudamiento moderado (alerta preventiva).
+- $\text{DTI} > 50\%$: Sobreendeudamiento crítico.
 
 ### C. Capacidad de Pago Ponderada
 $$\text{Capacidad de Pago} = (\text{Ingresos} - \text{Gastos}) \times 0.85$$
 
-### D. Clasificación Regulatoria de Morosidad (SBS Perú)
-- **Normal (Categoría 0):** 0 a 8 días de atraso.
-- **Con Problemas Potenciales CPP (Categoría 1):** 9 a 30 días de atraso.
-- **Deficiente (Categoría 2):** 31 a 60 días de atraso.
-- **Dudoso (Categoría 3):** 61 a 120 días de atraso.
-- **Pérdida (Categoría 4):** Más de 120 días de atraso.
+---
+
+## 👥 4. Roles y Control de Acceso
+
+La plataforma cuenta con separación de funciones por perfiles de usuario:
+
+- **Administrador:** Supervisión global de la cartera, auditoría, configuración de políticas y gestión de usuarios.
+- **Analista de Créditos:** Registro de clientes, simulación de condiciones y solicitud de dictámenes con inteligencia artificial.
+- **Personal de Cobranzas:** Seguimiento de cartera vencida, registro de abonos y emisión de requerimientos de pago.
 
 ---
 
-## 🤖 5. Inteligencia Artificial y Modo Demostración
+## 🚀 5. Ejecución del Sistema
 
-El módulo de IA evalúa de manera holística:
-- Solvencia económica y cobertura de cuota.
-- Ratio de endeudamiento DTI y dispersión de gastos.
-- Comportamiento en centrales de riesgo SBS.
-- Estabilidad de la actividad comercial o empleo.
-
-### Resiliencia de la Plataforma:
-1. **Con Clave OpenAI (`OPENAI_API_KEY`):** Se comunica con el modelo `gpt-4o-mini` para redactar evaluaciones enriquecidas en formato estructurado JSON.
-2. **Sin Clave / Modo Demostración:** El **Motor de Inferencia Heurística Local** analiza las mismas variables financieras conforme a la normativa SBS y genera dictámenes idénticos en profundidad, recomendaciones y probabilidades de mora, garantizando que el jurado o usuario pueda probar el 100% de la funcionalidad de inmediato sin incurrir en costos ni depender de conexión externa.
-
----
-
-## 🚀 6. Guía de Ejecución Local
-
-### Paso 1: Clonar el Repositorio
-```bash
-git clone https://github.com/TU-USUARIO/caja-inteligente.git
-cd caja-inteligente
-```
-
-### Paso 2: Crear y Activar un Entorno Virtual
-```bash
-# En Windows:
-python -m venv venv
-venv\Scripts\activate
-
-# En Linux / macOS:
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### Paso 3: Instalar Dependencias
+### 1. Instalación de Dependencias
 ```bash
 pip install -r requirements.txt
 ```
 
-### Paso 4: Configurar Variables de Entorno (Opcional)
-Copia el archivo `.env.example` a `.env`:
-```bash
-cp .env.example .env
-```
-*(Si no configuras claves de Supabase u OpenAI, el sistema funciona de inmediato en Modo Demostración con base de datos local y motor de IA heurístico).*
-
-### Paso 5: Iniciar la Aplicación
+### 2. Iniciar la Plataforma
 ```bash
 python app.py
 ```
-Abre en tu navegador: **http://127.0.0.1:5000**
+Acceder mediante el navegador web en: **http://127.0.0.1:5000**
 
 ---
 
-## 👥 7. Credenciales de Demostración
+## ⚖️ 6. Cumplimiento Normativo y Principios Éticos
 
-La plataforma incluye 3 roles para pruebas en vivo. Además, la barra superior y la pantalla de login cuentan con **botones de 1 clic** para alternar de perfil sin escribir contraseña:
-
-| Rol | Correo Electrónico | Contraseña | Alcance y Permisos |
-| :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@cajainteligente.pe` | `admin123` | Control total, auditoría, eliminación y configuración |
-| **Analista de Créditos** | `analista@cajainteligente.pe` | `analista123` | Creación de clientes, simulación y evaluación con IA |
-| **Personal de Cobranzas** | `cobranzas@cajainteligente.pe` | `cobranza123` | Gestión de mora, registro de abonos y emisión de alertas |
-
----
-
-## 🗄️ 8. Configuración de Supabase (PostgreSQL)
-
-Si deseas utilizar Supabase Cloud en lugar del almacenamiento local:
-
-1. Ingresa a [https://supabase.com/](https://supabase.com/) y crea un nuevo proyecto.
-2. Dirígete a la sección **SQL Editor**.
-3. Copia y ejecuta el contenido íntegro del archivo `database/schema.sql`.
-4. Ve a **Project Settings > API** y copia:
-   - `Project URL` $\rightarrow$ asígnalo a `SUPABASE_URL` en tu archivo `.env`.
-   - `anon public key` $\rightarrow$ asígnalo a `SUPABASE_KEY` en tu archivo `.env`.
-5. Si deseas conexión directa por driver PostgreSQL, copia la Connection String en `DATABASE_URL`.
-
----
-
-## 🌐 9. Guía Paso a Paso para Despliegue en Render
-
-### Paso 1: Subir el Código a GitHub
-```bash
-git init
-git add .
-git commit -m "feat: Lanzamiento de plataforma Caja Inteligente CMAC"
-git branch -M main
-git remote add origin https://github.com/TU-USUARIO/caja-inteligente.git
-git push -u origin main
-```
-
-### Paso 2: Crear el Web Service en Render
-1. Inicia sesión en [https://render.com/](https://render.com/).
-2. Haz clic en **New + > Web Service**.
-3. Conecta tu repositorio de GitHub `caja-inteligente`.
-4. Render detectará automáticamente el archivo `render.yaml` o configura manualmente:
-   - **Environment:** `Python`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT`
-5. En la pestaña **Environment Variables**, añade:
-   - `FLASK_ENV` = `production`
-   - `FLASK_DEBUG` = `False`
-   - `SECRET_KEY` = *(genera una clave aleatoria)*
-   - `DEMO_MODE` = `False` *(o `True` si deseas el motor heurístico local)*
-   - `OPENAI_API_KEY` = `sk-...` *(tu clave de OpenAI)*
-   - `SUPABASE_URL` = `https://tu-proyecto.supabase.co`
-   - `SUPABASE_KEY` = `tu-clave-anonima`
-6. Haz clic en **Create Web Service**. ¡En 2 minutos tu plataforma estará en vivo con HTTPS gratuito!
-
----
-
-## 🧪 10. Pruebas Automatizadas
-
-El proyecto incluye una suite de pruebas unitarias y de integración que valida todos los módulos:
-```bash
-python test_app.py
-```
-**Resultado:** 14 pruebas ejecutadas con 100% de éxito (Login, Dashboard, Simulador, IA, Morosidad, Exportación PDF y Excel).
-
----
-
-## ⚖️ 11. Aviso Ético y Cumplimiento SBS
-
-> **Nota de Cumplimiento Regulatorio:**  
-> La inteligencia artificial integrada en esta plataforma opera bajo el principio de **IA explicable como soporte al analista financiero**. En estricto cumplimiento con la normativa de la SBS del Perú y principios de equidad algorítmica, el sistema no discrimina por variables protegidas (edad, sexo, etnia, religión) ni emite aprobaciones o rechazos automáticos vinculantes. Toda resolución final requiere la firma y fundamentación de un funcionario de crédito humano.
+> **Declaración de Conformidad SBS:**  
+> La inteligencia artificial implementada en **Credit Risk** opera como una herramienta de apoyo analítico para los comités y funcionarios de crédito. En cumplimiento con la normativa peruana, el sistema no aprueba ni deniega solicitudes de forma automática, ni considera variables protegidas o discriminatorias. Toda decisión final sobre la concesión crediticia es emitida de forma humana por el personal autorizado.

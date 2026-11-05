@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}CAJA INTELIGENTE{% endblock %} - Riesgo Crediticio con IA</title>
+  <title>{% block title %}Credit Risk{% endblock %} - Evaluación de Riesgo Crediticio</title>
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
@@ -31,10 +31,10 @@
   <!-- SIDEBAR NAVEGACIÓN -->
   <aside class="app-sidebar" id="appSidebar">
     <div class="sidebar-brand">
-      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Caja Inteligente">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Credit Risk">
       <div>
-        <h1 class="brand-title">CAJA INTELIGENTE</h1>
-        <span class="brand-subtitle"><i class="fa-solid fa-brain me-1"></i>IA Credit Risk CMAC</span>
+        <h1 class="brand-title">Credit Risk</h1>
+        <span class="brand-subtitle"><i class="fa-solid fa-chart-line me-1"></i>Riesgo Crediticio CMAC</span>
       </div>
     </div>
     
@@ -85,10 +85,10 @@
     <div class="sidebar-footer">
       <div class="system-status mb-2">
         <div class="status-dot"></div>
-        <span>Sistema SBS / Supabase: <strong>En línea</strong></span>
+        <span>Sistema de Riesgos: <strong>En línea</strong></span>
       </div>
       <div class="d-flex align-items-center justify-content-between">
-        <span class="badge badge-ai"><i class="fa-solid fa-microchip"></i> OpenAI / Demo</span>
+        <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i> Motor IA Activo</span>
         <a href="{{ url_for('auth.logout') }}" class="text-secondary text-decoration-none" title="Cerrar Sesión">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
         </a>
@@ -112,19 +112,6 @@
       </div>
 
       <div class="topbar-right">
-        <!-- Switcher Rápido de Roles para Jurado / Evaluación -->
-        <div class="dropdown me-2">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill px-3" type="button" data-bs-toggle="dropdown">
-            <i class="fa-solid fa-user-gear me-1"></i> Cambiar Rol (Demo)
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-            <li><h6 class="dropdown-header">Perfiles de Demostración</h6></li>
-            <li><a class="dropdown-item" href="{{ url_for('auth.demo_login', role='admin') }}"><i class="fa-solid fa-shield text-danger me-2"></i> Administrador</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('auth.demo_login', role='analista') }}"><i class="fa-solid fa-magnifying-glass-chart text-primary me-2"></i> Analista de Créditos</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('auth.demo_login', role='cobranzas') }}"><i class="fa-solid fa-hand-holding-dollar text-warning me-2"></i> Personal de Cobranzas</a></li>
-          </ul>
-        </div>
-
         <!-- Alertas Campanita -->
         <div class="dropdown me-2">
           <button class="btn btn-light position-relative rounded-circle p-2" data-bs-toggle="dropdown" style="width: 38px; height: 38px;">
@@ -203,7 +190,7 @@
     <!-- FOOTER INFORMATIVO -->
     <footer class="bg-white border-top py-3 px-4 text-center text-muted small mt-auto">
       <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
-        <span>&copy; 2026 <strong>CAJA INTELIGENTE</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con IA.</span>
+        <span>&copy; 2026 <strong>Credit Risk</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con IA.</span>
         <span>Normativa SBS Res. N° 11356-2008 &bull; Especialidad en Microfinanzas CMAC</span>
       </div>
     </footer>

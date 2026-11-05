@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Evaluación de Riesgo IA: {{ solicitud.numero_solicitud }} - CAJA INTELIGENTE{% endblock %}
+{% block title %}Evaluación de Riesgo IA: {{ solicitud.numero_solicitud }} - Credit Risk{% endblock %}
 
 {% block content %}
 <div class="content-header">
@@ -92,11 +92,7 @@
     <div class="custom-card text-center p-4 h-100">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i>{{ evaluacion.modelo_ia_utilizado }}</span>
-        {% if evaluacion.es_modo_demo %}
-          <span class="badge bg-secondary-subtle text-secondary small border">Modo Demo Local</span>
-        {% else %}
-          <span class="badge bg-success-subtle text-success small border">OpenAI Conectado</span>
-        {% endif %}
+        <span class="badge bg-success-subtle text-success small border"><i class="fa-solid fa-circle-check me-1"></i>Dictamen Activo</span>
       </div>
 
       <div class="my-4">

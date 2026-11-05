@@ -6,7 +6,7 @@ def get_demo_users():
     return [
         {
             "id": "u-001",
-            "email": "admin@cajainteligente.pe",
+            "email": "admin@creditrisk.pe",
             "password_hash": generate_password_hash("admin123"),
             "nombre": "Lic. Marco Antonio Valdivia",
             "rol": "Administrador",
@@ -17,7 +17,7 @@ def get_demo_users():
         },
         {
             "id": "u-002",
-            "email": "analista@cajainteligente.pe",
+            "email": "analista@creditrisk.pe",
             "password_hash": generate_password_hash("analista123"),
             "nombre": "Econ. Valeria Zúñiga Paredes",
             "rol": "Analista de créditos",
@@ -28,6 +28,39 @@ def get_demo_users():
         },
         {
             "id": "u-003",
+            "email": "cobranzas@creditrisk.pe",
+            "password_hash": generate_password_hash("cobranza123"),
+            "nombre": "Sr. Renato Barreda Tello",
+            "rol": "Personal de cobranza",
+            "cargo": "Especialista en Cartera y Recuperaciones",
+            "agencia": "Sede Central - Operaciones",
+            "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+            "activo": 1
+        },
+        {
+            "id": "u-004",
+            "email": "admin@cajainteligente.pe",
+            "password_hash": generate_password_hash("admin123"),
+            "nombre": "Lic. Marco Antonio Valdivia",
+            "rol": "Administrador",
+            "cargo": "Gerente de Riesgos y Cumplimiento",
+            "agencia": "Sede Central - CMAC Lima",
+            "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+            "activo": 1
+        },
+        {
+            "id": "u-005",
+            "email": "analista@cajainteligente.pe",
+            "password_hash": generate_password_hash("analista123"),
+            "nombre": "Econ. Valeria Zúñiga Paredes",
+            "rol": "Analista de créditos",
+            "cargo": "Analista Senior de Créditos MYPE",
+            "agencia": "Agencia San Juan de Lurigancho",
+            "avatar_url": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+            "activo": 1
+        },
+        {
+            "id": "u-006",
             "email": "cobranzas@cajainteligente.pe",
             "password_hash": generate_password_hash("cobranza123"),
             "nombre": "Sr. Renato Barreda Tello",

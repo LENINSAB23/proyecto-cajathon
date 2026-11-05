@@ -42,7 +42,7 @@ def create_app():
             pass
 
         return {
-            'app_name': 'CAJA INTELIGENTE',
+            'app_name': 'Credit Risk',
             'institucion': 'Caja Municipal de Ahorro y Crédito - CMAC',
             'current_user': {
                 'id': session.get('user_id'),
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = Config.DEBUG
     print(f"\n" + "="*70)
-    print("  🚀 CAJA INTELIGENTE - Sistema de Evaluación de Riesgo con IA")
+    print("  🚀 CREDIT RISK - Sistema de Evaluación de Riesgo con IA")
     print("  Orientado a Cajas Municipales de Ahorro y Crédito del Perú")
     print(f"  Servidor local activo en: http://127.0.0.1:{port}")
     print("="*70 + "\n")

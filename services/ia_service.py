@@ -43,7 +43,7 @@ REGLAS ESTRICTAS:
   "recomendaciones": "<recomendaciones prácticas para el analista: aprobación condicionada, garantías, plazo, monto>"
 }"""
 
-            prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para Caja Inteligente:
+            prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para la plataforma Credit Risk:
 DATOS DEL CLIENTE:
 - Nombre: {datos_cliente.get('nombres')} {datos_cliente.get('apellidos')}
 - DNI: {datos_cliente.get('dni')}
@@ -79,9 +79,9 @@ MÉTRICAS FINANCIERAS CUANTITATIVAS CALCULADAS:
             resultado_ia = json.loads(contenido)
             
             # Validar y agregar metadatos
-            resultado_ia["modelo_ia_utilizado"] = f"OpenAI {Config.OPENAI_MODEL}"
+            resultado_ia["modelo_ia_utilizado"] = "Motor IA Credit Risk"
             resultado_ia["es_modo_demo"] = False
-            resultado_ia["aviso_legal"] = "Evaluación generada por IA (OpenAI) como herramienta de apoyo analítico. La decisión final corresponde al comité de créditos humano conforme a normas SBS."
+            resultado_ia["aviso_legal"] = "Evaluación generada por el sistema de Inteligencia Artificial Credit Risk como herramienta de apoyo analítico. La decisión final corresponde al comité de créditos conforme a normas SBS."
             return resultado_ia
 
         except Exception as err:
@@ -194,7 +194,7 @@ def generar_evaluacion_heuristica_ia(solicitud: dict, cliente: dict, metricas: d
         "probabilidad_morosidad_30d": min(95.0, prob_30d),
         "probabilidad_morosidad_90d": min(98.0, prob_90d),
         "recomendaciones": recomendaciones,
-        "modelo_ia_utilizado": "CajaIA-Engine (Heurística Microfinanciera SBS)",
+        "modelo_ia_utilizado": "Motor IA Credit Risk (SBS)",
         "es_modo_demo": True,
         "aviso_legal": "Evaluación asistida por Inteligencia Artificial orientada a la toma de decisión humana. Cumple con la normativa de gestión de riesgo crediticio SBS Resolución N° 11356-2008."
     }

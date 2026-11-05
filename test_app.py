@@ -4,7 +4,7 @@ def run_tests():
     app = create_app()
     client = app.test_client()
 
-    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: CAJA INTELIGENTE ---")
+    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: CREDIT RISK ---")
 
     # 1. Login demo
     res = client.get('/demo-login/admin', follow_redirects=True)
