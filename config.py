@@ -17,6 +17,14 @@ class Config:
     # SQLite Local Database (para desarrollo local sin necesidad de configurar Supabase de inmediato)
     SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database", "caja_inteligente.db")
 
+    # Google Gemini & Bank-ito AI Configuration
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+
+    # Telegram Bot Configuration (Alertas Automáticas de Riesgo)
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")

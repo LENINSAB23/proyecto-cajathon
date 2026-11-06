@@ -117,7 +117,7 @@
         {% if demo_mode %}
           <span class="badge bg-warning text-dark"><i class="fa-solid fa-flask me-1"></i> Demo · datos ficticios</span>
         {% else %}
-          <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i> Motor IA</span>
+          <span class="badge badge-ai"><i class="fa-solid fa-microchip me-1"></i> Bank-ito IA Activo</span>
         {% endif %}
         <a href="{{ url_for('auth.logout') }}" class="text-secondary text-decoration-none" title="Cerrar Sesión">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -132,7 +132,7 @@
     <!-- TOPBAR -->
     <header class="app-topbar">
       <div class="topbar-left">
-        <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle">
+        <button class="btn btn-sm btn-light border d-lg-none" id="sidebarToggle" type="button" aria-label="Abrir menú">
           <i class="fa-solid fa-bars"></i>
         </button>
         <div class="agency-badge">
@@ -142,10 +142,16 @@
       </div>
 
       <div class="topbar-right">
+        <!-- Botón Bank-ito Copilot -->
+        <button type="button" class="btn-bankito-pill" id="openBankitoBtn" title="Abrir Bank-ito Copilot de Riesgo">
+          <span class="dot-ai"></span>
+          <span>Bank-ito IA</span>
+        </button>
+
         {% if current_user.rol in ['Administrador', 'Personal de cobranza'] %}
         <!-- Alertas Campanita -->
-        <div class="dropdown me-2">
-          <button class="btn btn-light position-relative rounded-circle p-2" data-bs-toggle="dropdown" style="width: 38px; height: 38px;">
+        <div class="dropdown me-1">
+          <button class="btn btn-light border position-relative rounded-circle p-2" data-bs-toggle="dropdown" style="width: 36px; height: 36px;" aria-label="Alertas">
             <i class="fa-regular fa-bell text-secondary"></i>
             {% if alertas_pendientes_count > 0 %}
             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
@@ -220,15 +226,57 @@
     </main>
 
     <!-- FOOTER INFORMATIVO -->
-    <footer class="bg-white border-top py-3 px-4 text-center text-muted small mt-auto">
+    <footer class="bg-white border-top py-3 px-4 text-muted small mt-auto">
       <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
-        <span>&copy; 2026 <strong>CAJA INTELIGENTE</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con IA.</span>
-        <span>Normativa SBS Res. N° 11356-2008 &bull; Especialidad en Microfinanzas CMAC</span>
+        <span>&copy; 2026 <strong>CAJA INTELIGENTE</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con Bank-ito IA.</span>
+        <span>Normativa SBS Res. N° 11356-2008 &bull; Cajas Municipales de Ahorro y Crédito</span>
       </div>
     </footer>
 
   </div>
 </div>
+
+<!-- BANK-ITO COPILOT DRAWER (OFF-CANVAS) -->
+<div class="bankito-drawer-overlay" id="bankitoOverlay"></div>
+<aside class="bankito-drawer" id="bankitoDrawer" aria-label="Bank-ito Copilot">
+  <div class="bankito-header">
+    <div class="bankito-header-brand">
+      <div class="bankito-avatar-icon">
+        <i class="fa-solid fa-microchip"></i>
+      </div>
+      <div>
+        <div class="fw-bold fs-6">Bank-ito Copilot</div>
+        <div class="small text-light opacity-75" style="font-size: 0.7rem;">Asistente de Riesgo · Google Gemini</div>
+      </div>
+    </div>
+    <button type="button" class="bankito-close-btn" id="closeBankitoBtn" aria-label="Cerrar">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="bankito-body" id="bankitoBody">
+    <div class="bankito-msg bankito-msg-ai">
+      <div class="fw-semibold text-primary mb-1"><i class="fa-solid fa-robot me-1"></i>Bank-ito IA</div>
+      Hola, soy <strong>Bank-ito</strong>, tu oficial de inteligencia financiera y asistente de riesgo crediticio. ¿Deseas consultar parámetros SBS, analizar el ratio DTI o validar una solicitud?
+      
+      <div class="bankito-chips">
+        <button type="button" class="bankito-chip-btn" data-prompt="¿Cómo se calcula el ratio DTI según SBS?">Calcular DTI</button>
+        <button type="button" class="bankito-chip-btn" data-prompt="¿Cuáles son las categorías de clasificación de deudores de la SBS?">Clasificación SBS</button>
+        <button type="button" class="bankito-chip-btn" data-prompt="¿Qué requisitos se exigen para un crédito de Riesgo Medio?">Riesgo Medio</button>
+        <button type="button" class="bankito-chip-btn" data-prompt="¿Cómo prevenir mora en los primeros 30 días?">Prevenir Mora</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bankito-footer">
+    <form id="bankitoForm" class="bankito-input-group">
+      <input type="text" id="bankitoInput" class="form-control form-control-fintech" placeholder="Pregunta a Bank-ito..." autocomplete="off" required>
+      <button type="submit" class="btn btn-fintech-primary px-3" id="bankitoSendBtn">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+</aside>
 
 <!-- Bootstrap 5.3 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

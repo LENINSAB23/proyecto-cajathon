@@ -1,648 +1,934 @@
 /* ==========================================================================
-   CAJA INTELIGENTE - Hoja de Estilos Fintech Profesional
-   Diseño inspirado en plataformas bancarias modernas y centros de control de riesgo
+   CAJA INTELIGENTE - Enterprise Fintech Design System
+   Architecture: Financial Risk Assessment SaaS & Banking Workstation
+   Color Palette: Deep Navy (#0A192F), Petrol Blue (#0284C7), Crisp Slate & Neutrals
    ========================================================================== */
 
 :root {
-  --navy-darkest: #070D1F;
-  --navy-dark: #0B132B;
-  --navy-medium: #1C2541;
-  --navy-light: #2A3B66;
-  --brand-cyan: #0284C7;
-  --brand-cyan-light: #38BDF8;
-  --brand-accent: #0EA5E9;
-  
-  /* Semáforo de Riesgo SBS */
-  --risk-low: #10B981;
+  /* Corporativo Bancario */
+  --navy-950: #070D1A;
+  --navy-900: #0A192F;
+  --navy-850: #0E223D;
+  --navy-800: #132D50;
+  --navy-700: #1E3A63;
+
+  /* Marca Principal (Petrol Blue) */
+  --brand-primary: #0284C7;
+  --brand-primary-hover: #0369A1;
+  --brand-primary-light: #E0F2FE;
+  --brand-primary-border: #BAE6FD;
+
+  /* Superficies y Lienzo */
+  --bg-canvas: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F1F5F9;
+  --bg-inset: #F8FAFC;
+
+  /* Tipografía & Textos */
+  --text-headings: #0F172A;
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
+
+  /* Bordes & Separadores */
+  --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --border-focus: #0284C7;
+
+  /* Semáforo de Riesgo SBS (Regulación Financiera) */
+  --risk-low: #059669;
   --risk-low-bg: #ECFDF5;
   --risk-low-border: #A7F3D0;
-  
-  --risk-medium: #F59E0B;
+
+  --risk-medium: #D97706;
   --risk-medium-bg: #FFFBEB;
   --risk-medium-border: #FDE68A;
-  
-  --risk-high: #EF4444;
+
+  --risk-high: #DC2626;
   --risk-high-bg: #FEF2F2;
   --risk-high-border: #FECACA;
-  
-  --risk-critical: #991B1B;
-  
-  /* Superficies y Neutros */
-  --bg-body: #F4F6F9;
-  --bg-card: #FFFFFF;
-  --text-main: #0F172A;
-  --text-muted: #64748B;
-  --border-color: #E2E8F0;
-  --border-focus: #38BDF8;
-  
-  /* Sombras */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03);
-  --shadow-card: 0 2px 8px rgba(11, 19, 43, 0.04);
-  
-  --sidebar-width: 260px;
-  --topbar-height: 70px;
-}
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-body);
-  color: var(--text-main);
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
+  /* Sombras Discretas Corporativas */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-drawer: -6px 0 25px rgba(15, 23, 42, 0.15);
+
+  /* Medidas de Maquetación */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 9999px;
 }
 
 /* ==========================================================================
-   LAYOUT PRINCIPAL: SIDEBAR & TOPBAR
+   RESET & TIPOGRAFÍA BASE
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-headings);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 0;
+}
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+  transition: color 0.15s ease-in-out;
+}
+a:hover {
+  color: var(--brand-primary-hover);
+}
+
+/* ==========================================================================
+   ESTRUCTURA Y LAYOUT (SIDEBAR & WRAPPER)
    ========================================================================== */
 .app-container {
   display: flex;
   min-height: 100vh;
+  background-color: var(--bg-canvas);
 }
 
-/* Sidebar */
+/* Sidebar Corporativo Deep Navy */
 .app-sidebar {
   width: var(--sidebar-width);
-  background-color: var(--navy-darkest);
-  background-image: linear-gradient(180deg, #070D1F 0%, #0B132B 100%);
+  background-color: var(--navy-900);
   color: #F8FAFC;
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 1000;
+  z-index: 1040;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.25s ease-in-out;
 }
 
 .sidebar-brand {
   height: var(--topbar-height);
   display: flex;
   align-items: center;
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .sidebar-brand img {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
 }
 
 .sidebar-brand .brand-title {
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1.05rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: #FFFFFF;
   margin: 0;
+  line-height: 1.2;
 }
 
 .sidebar-brand .brand-subtitle {
-  font-size: 0.68rem;
-  color: var(--brand-cyan-light);
+  font-size: 0.65rem;
+  color: #94A3B8;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   font-weight: 600;
   display: block;
 }
 
 .sidebar-nav {
-  padding: 1.25rem 0.85rem;
+  padding: 1rem 0.75rem;
   flex: 1;
   overflow-y: auto;
 }
 
 .nav-section-title {
-  font-size: 0.72rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748B;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 0.75rem 0.75rem 0.35rem 0.75rem;
+  color: #64748B;
+  padding: 0.85rem 0.75rem 0.4rem 0.75rem;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem 1rem;
-  color: #94A3B8;
-  text-decoration: none;
-  font-size: 0.92rem;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  color: #CBD5E1;
+  font-size: 0.84rem;
   font-weight: 500;
-  border-radius: 8px;
-  margin-bottom: 0.25rem;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease-in-out;
+  margin-bottom: 2px;
+  text-decoration: none;
 }
 
 .sidebar-link i {
-  font-size: 1.1rem;
-  width: 22px;
+  font-size: 0.95rem;
+  width: 1.25rem;
   text-align: center;
+  color: #94A3B8;
+  transition: color 0.15s ease;
 }
 
 .sidebar-link:hover {
-  color: #FFFFFF;
   background-color: rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+}
+.sidebar-link:hover i {
+  color: #FFFFFF;
 }
 
 .sidebar-link.active {
-  color: #FFFFFF;
-  background-color: var(--brand-cyan);
+  background-color: rgba(2, 132, 199, 0.16);
+  color: #38BDF8;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+  border-left: 3px solid #38BDF8;
+}
+.sidebar-link.active i {
+  color: #38BDF8;
 }
 
+/* Sidebar Footer */
 .sidebar-footer {
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: var(--navy-950);
 }
 
 .system-status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #94A3B8;
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
   background-color: var(--risk-low);
-  box-shadow: 0 0 8px var(--risk-low);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
 }
 
-/* Topbar */
+/* ==========================================================================
+   WRAPPER PRINCIPAL & TOPBAR
+   ========================================================================== */
 .main-wrapper {
-  margin-left: var(--sidebar-width);
   flex: 1;
+  margin-left: var(--sidebar-width);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: margin-left 0.3s ease;
+  min-width: 0;
+  transition: margin-left 0.25s ease-in-out;
 }
 
 .app-topbar {
   height: var(--topbar-height);
-  background-color: #FFFFFF;
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 2rem;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 1.75rem;
   position: sticky;
   top: 0;
-  z-index: 999;
-  box-shadow: var(--shadow-sm);
+  z-index: 1020;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .agency-badge {
-  background-color: var(--bg-body);
-  border: 1px solid var(--border-color);
-  padding: 0.4rem 0.85rem;
-  border-radius: 20px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--navy-medium);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
-/* User Pill & Role Switcher */
+/* Botón Bank-ito Copilot en Topbar */
+.btn-bankito-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  background-color: #F0F9FF;
+  border: 1px solid var(--brand-primary-border);
+  color: var(--brand-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+.btn-bankito-pill:hover {
+  background-color: #E0F2FE;
+  border-color: #7DD3FC;
+  color: var(--brand-primary-hover);
+}
+.btn-bankito-pill .dot-ai {
+  width: 6px;
+  height: 6px;
+  background-color: var(--brand-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+}
+
+/* User Capsule */
 .user-profile-menu {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  cursor: pointer;
+  gap: 0.65rem;
   padding: 0.35rem 0.75rem;
-  border-radius: 30px;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-}
-
-.user-profile-menu:hover {
-  background-color: var(--bg-body);
-  border-color: var(--border-color);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background-color: var(--bg-surface);
 }
 
 .user-avatar-img {
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--brand-cyan);
+  border: 1px solid var(--border-subtle);
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
-  text-align: right;
+  line-height: 1.15;
 }
 
 .user-name {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--navy-dark);
-  line-height: 1.2;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-headings);
 }
 
 .user-role-badge {
-  font-size: 0.72rem;
-  color: var(--brand-cyan);
-  font-weight: 600;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
 }
 
 /* ==========================================================================
-   CARDS & KPI WIDGETS
+   CONTENIDO PRINCIPAL & CABECERAS DE SECCIÓN
    ========================================================================== */
 .main-content {
-  padding: 2rem;
   flex: 1;
+  padding: 1.75rem;
 }
 
 .content-header {
-  margin-bottom: 1.75rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .content-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--navy-dark);
-  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--navy-900);
+  margin-bottom: 0.2rem;
 }
 
 .content-subtitle {
-  font-size: 0.88rem;
+  font-size: 0.8125rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
 }
 
-.custom-card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
-  margin-bottom: 1.75rem;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.custom-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.card-header-custom {
-  padding: 1.25rem 1.5rem;
-  background-color: transparent;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-header-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--navy-dark);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.card-body-custom {
-  padding: 1.5rem;
-}
-
-/* KPI Cards */
+/* ==========================================================================
+   TARJETAS KPI (ESTILO KANDELL & WORKSTATION FINANCIERA)
+   ========================================================================== */
 .kpi-card {
-  background: #FFFFFF;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: var(--shadow-card);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  transition: all 0.2s;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   height: 100%;
 }
-
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: #CBD5E1;
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 .kpi-label {
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
   margin-bottom: 0.35rem;
 }
 
 .kpi-value {
-  font-size: 1.85rem;
-  font-weight: 800;
-  color: var(--navy-dark);
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-headings);
   line-height: 1.1;
-  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.4rem;
 }
 
 .kpi-subtext {
-  font-size: 0.78rem;
-  color: var(--text-muted);
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .kpi-icon-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.35rem;
+  font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .kpi-icon-blue {
-  background-color: #E0F2FE;
+  background-color: #F0F9FF;
   color: #0284C7;
+  border: 1px solid #BAE6FD;
 }
-
 .kpi-icon-green {
-  background-color: #DCFCE7;
-  color: #16A34A;
+  background-color: var(--risk-low-bg);
+  color: var(--risk-low);
+  border: 1px solid var(--risk-low-border);
 }
-
 .kpi-icon-amber {
-  background-color: #FEF3C7;
-  color: #D97706;
+  background-color: var(--risk-medium-bg);
+  color: var(--risk-medium);
+  border: 1px solid var(--risk-medium-border);
 }
-
 .kpi-icon-red {
-  background-color: #FEE2E2;
-  color: #DC2626;
+  background-color: var(--risk-high-bg);
+  color: var(--risk-high);
+  border: 1px solid var(--risk-high-border);
 }
 
 /* ==========================================================================
-   BADGES DE RIESGO SBS
+   TARJETAS DE CONTENEDOR (CUSTOM-CARD)
+   ========================================================================== */
+.custom-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.card-header-custom {
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-surface);
+}
+
+.card-header-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-headings);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-body-custom {
+  padding: 1.25rem;
+}
+
+/* ==========================================================================
+   TABLAS FINANCIERAS (TABLE-FINTECH)
+   ========================================================================== */
+.table-fintech {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-bottom: 0;
+}
+
+.table-fintech thead th {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1rem;
+  border-top: none;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.table-fintech tbody td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #F1F5F9;
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.table-fintech tbody tr {
+  transition: background-color 0.12s ease-in-out;
+}
+.table-fintech tbody tr:hover {
+  background-color: #F8FAFC;
+}
+
+.table-fintech tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==========================================================================
+   INSIGNIAS DE ESTADO Y RIESGO SBS
    ========================================================================== */
 .badge-risk {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.35rem 0.75rem;
-  border-radius: 20px;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .badge-risk-low {
   background-color: var(--risk-low-bg);
-  color: #065F46;
+  color: var(--risk-low);
   border: 1px solid var(--risk-low-border);
 }
 
 .badge-risk-medium {
   background-color: var(--risk-medium-bg);
-  color: #92400E;
+  color: var(--risk-medium);
   border: 1px solid var(--risk-medium-border);
 }
 
 .badge-risk-high {
   background-color: var(--risk-high-bg);
-  color: #991B1B;
+  color: var(--risk-high);
   border: 1px solid var(--risk-high-border);
 }
 
 .badge-ai {
-  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-  color: #FFFFFF;
-  border-radius: 20px;
-  padding: 0.25rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
-}
-
-/* ==========================================================================
-   TABLAS FINANCIERAS MODERNAS
-   ========================================================================== */
-.table-fintech {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.table-fintech th {
-  background-color: #F8FAFC;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.95rem 1.25rem;
-  border-bottom: 1px solid var(--border-color);
-  border-top: 1px solid var(--border-color);
-}
-
-.table-fintech td {
-  padding: 1rem 1.25rem;
-  font-size: 0.88rem;
-  color: var(--navy-dark);
-  border-bottom: 1px solid var(--border-color);
-  vertical-align: middle;
-}
-
-.table-fintech tr:hover td {
-  background-color: #F8FAFC;
-}
-
-/* ==========================================================================
-   FORMULARIOS Y SIMULADOR
-   ========================================================================== */
-.form-label-fintech {
-  font-size: 0.84rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--navy-medium);
-  margin-bottom: 0.4rem;
-}
-
-.form-control-fintech, .form-select-fintech {
-  background-color: #FFFFFF;
-  border: 1.5px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.65rem 0.95rem;
-  font-size: 0.9rem;
-  color: var(--navy-dark);
-  transition: all 0.2s;
-}
-
-.form-control-fintech:focus, .form-select-fintech:focus {
-  border-color: var(--brand-cyan);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
-  outline: none;
-}
-
-.simulator-panel {
-  background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
-  color: #FFFFFF;
-  border-radius: 12px;
-  padding: 1.75rem;
-}
-
-.simulator-result-box {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-top: 1rem;
+  border-radius: var(--radius-pill);
+  background-color: #F0F9FF;
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-primary-border);
 }
 
 /* ==========================================================================
-   BOTONES
+   BOTONES FINTECH CORPORATIVOS
    ========================================================================== */
 .btn-fintech-primary {
-  background-color: var(--brand-cyan);
+  background-color: var(--brand-primary);
+  border: 1px solid var(--brand-primary);
   color: #FFFFFF;
+  font-size: 0.8125rem;
   font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  padding: 0.65rem 1.25rem;
-  transition: all 0.2s;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  transition: all 0.15s ease-in-out;
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
 }
-
 .btn-fintech-primary:hover {
-  background-color: #0369A1;
+  background-color: var(--brand-primary-hover);
+  border-color: var(--brand-primary-hover);
   color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-fintech-dark {
-  background-color: var(--navy-dark);
+  background-color: var(--navy-900);
+  border: 1px solid var(--navy-900);
   color: #FFFFFF;
+  font-size: 0.8125rem;
   font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  padding: 0.65rem 1.25rem;
-  transition: all 0.2s;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
 }
-
 .btn-fintech-dark:hover {
-  background-color: #070D1F;
+  background-color: var(--navy-800);
+  border-color: var(--navy-800);
   color: #FFFFFF;
 }
 
 .btn-fintech-outline {
-  background-color: transparent;
-  color: var(--navy-medium);
-  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 0.6rem 1.15rem;
-  transition: all 0.2s;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
 }
-
 .btn-fintech-outline:hover {
-  background-color: #F8FAFC;
-  border-color: #CBD5E1;
-  color: var(--navy-dark);
+  background-color: var(--bg-subtle);
+  border-color: #94A3B8;
+  color: var(--text-headings);
 }
 
 /* ==========================================================================
-   SCORE CIRCLE PROGRESS
+   FORMULARIOS Y CAMPOS DE ENTRADA
+   ========================================================================== */
+.form-label-fintech {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-control-fintech, .form-select-fintech {
+  font-size: 0.84rem;
+  font-family: inherit;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  background-color: #FFFFFF;
+  color: var(--text-headings);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control-fintech:focus, .form-select-fintech:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  outline: none;
+}
+
+/* ==========================================================================
+   INDICADOR CIRCULAR DE SCORE DE RIESGO
    ========================================================================== */
 .score-badge-circle {
-  width: 90px;
-  height: 90px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-weight: 900;
-  box-shadow: var(--shadow-md);
   margin: 0 auto;
+  border: 4px solid;
+  line-height: 1;
 }
 
-.score-badge-circle.score-low {
-  background: radial-gradient(circle, #ECFDF5 60%, #10B981 100%);
-  color: #065F46;
-  border: 4px solid #10B981;
+.score-low {
+  border-color: var(--risk-low);
+  background-color: var(--risk-low-bg);
+  color: var(--risk-low);
 }
 
-.score-badge-circle.score-medium {
-  background: radial-gradient(circle, #FFFBEB 60%, #F59E0B 100%);
-  color: #92400E;
-  border: 4px solid #F59E0B;
+.score-medium {
+  border-color: var(--risk-medium);
+  background-color: var(--risk-medium-bg);
+  color: var(--risk-medium);
 }
 
-.score-badge-circle.score-high {
-  background: radial-gradient(circle, #FEF2F2 60%, #EF4444 100%);
-  color: #991B1B;
-  border: 4px solid #EF4444;
+.score-high {
+  border-color: var(--risk-high);
+  background-color: var(--risk-high-bg);
+  color: var(--risk-high);
 }
 
 /* ==========================================================================
-   RESPONSIVE DESIGN
+   BANK-ITO COPILOT DRAWER (OFF-CANVAS ASISTENTE FINANCIERO)
+   ========================================================================== */
+.bankito-drawer {
+  position: fixed;
+  top: 0;
+  right: -440px;
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  background-color: #FFFFFF;
+  box-shadow: var(--shadow-drawer);
+  z-index: 1060;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.bankito-drawer.open {
+  right: 0;
+}
+
+.bankito-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  z-index: 1055;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+.bankito-drawer-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bankito-header {
+  padding: 1.1rem 1.25rem;
+  background-color: var(--navy-900);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bankito-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bankito-avatar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 0.95rem;
+}
+
+.bankito-close-btn {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+.bankito-close-btn:hover {
+  color: #FFFFFF;
+}
+
+.bankito-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  background-color: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bankito-msg {
+  max-width: 88%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.bankito-msg-ai {
+  background-color: #FFFFFF;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  align-self: flex-start;
+  box-shadow: var(--shadow-xs);
+}
+
+.bankito-msg-user {
+  background-color: var(--brand-primary);
+  color: #FFFFFF;
+  align-self: flex-end;
+}
+
+.bankito-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.bankito-chip-btn {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.bankito-chip-btn:hover {
+  background-color: #F0F9FF;
+  border-color: #7DD3FC;
+  color: var(--brand-primary);
+}
+
+.bankito-footer {
+  padding: 0.85rem 1rem;
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.bankito-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ==========================================================================
+   PANEL DE SIMULACIÓN FINANCIERA (MODAL PRÉSTAMOS)
+   ========================================================================== */
+.simulator-panel {
+  background-color: var(--navy-900);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.simulator-result-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+
+/* ==========================================================================
+   UTILIDADES & ESTILOS AUXILIARES
+   ========================================================================== */
+.text-navy {
+  color: var(--navy-900) !important;
+}
+
+.bg-danger-subtle {
+  background-color: var(--risk-high-bg) !important;
+}
+.border-danger-subtle {
+  border-color: var(--risk-high-border) !important;
+}
+.text-danger {
+  color: var(--risk-high) !important;
+}
+
+.bg-warning-subtle {
+  background-color: var(--risk-medium-bg) !important;
+}
+.border-warning-subtle {
+  border-color: var(--risk-medium-border) !important;
+}
+.text-warning {
+  color: var(--risk-medium) !important;
+}
+
+.bg-success-subtle {
+  background-color: var(--risk-low-bg) !important;
+}
+.border-success-subtle {
+  border-color: var(--risk-low-border) !important;
+}
+.text-success {
+  color: var(--risk-low) !important;
+}
+
+/* ==========================================================================
+   RESPONSIVIDAD Y BREAKPOINTS MÓVILES
    ========================================================================== */
 @media (max-width: 991.98px) {
   .app-sidebar {
     transform: translateX(-100%);
   }
-  
   .app-sidebar.show {
     transform: translateX(0);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
   }
-  
   .main-wrapper {
     margin-left: 0;
   }
+  .app-topbar {
+    padding: 0 1rem;
+  }
+  .main-content {
+    padding: 1.25rem 1rem;
+  }
 }
-

@@ -79,26 +79,6 @@ def execute_db(query, args=()):
     finally:
         conn.close()
 
-def execute_transaction(statements):
-    """Run a sequence of parameterized writes atomically."""
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        row_counts = []
-        for query, args in statements:
-            if Config.DATABASE_URL:
-                query = query.replace("?", "%s")
-            cur.execute(query, args)
-            row_counts.append(cur.rowcount)
-        conn.commit()
-        cur.close()
-        return row_counts
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
 def new_id(prefix):
     """Genera UUIDs compatibles con Supabase y prefijos legibles en SQLite demo."""
     import uuid
@@ -110,8 +90,7 @@ def init_db():
     if Config.DATABASE_URL:
         expected_tables = {
             "usuarios", "clientes", "solicitudes_credito", "evaluaciones_riesgo",
-            "pagos", "alertas", "historial_crediticio", "historial_decisiones",
-            "promesas_pago", "transacciones_pago", "telegram_notifications"
+            "pagos", "alertas", "historial_crediticio"
         }
         conn = get_connection()
         try:
@@ -171,10 +150,6 @@ def init_db():
         email TEXT,
         direccion TEXT,
         departamento TEXT DEFAULT 'Lima',
-        provincia TEXT,
-        distrito TEXT,
-        latitud REAL CHECK (latitud IS NULL OR (latitud BETWEEN -18.5 AND 0.0)),
-        longitud REAL CHECK (longitud IS NULL OR (longitud BETWEEN -82.0 AND -68.0)),
         activo INTEGER DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -199,8 +174,6 @@ def init_db():
         ingreso_disponible REAL NOT NULL,
         estado TEXT DEFAULT 'PENDIENTE',
         motivo_rechazo TEXT,
-        monto_desembolsado REAL CHECK (monto_desembolsado IS NULL OR monto_desembolsado >= 0),
-        fecha_desembolso TEXT,
         fecha_solicitud TEXT DEFAULT CURRENT_TIMESTAMP,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -280,100 +253,20 @@ def init_db():
         FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS historial_decisiones (
+    CREATE TABLE IF NOT EXISTS notificaciones_telegram (
         id TEXT PRIMARY KEY,
-        solicitud_id TEXT NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
-        cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
-        actor_id TEXT NOT NULL,
-        actor_nombre TEXT NOT NULL,
-        tipo_evento TEXT NOT NULL,
-        estado_decision TEXT,
-        nivel_riesgo TEXT,
-        score_riesgo INTEGER,
-        observaciones TEXT,
-        snapshot_json TEXT NOT NULL,
+        evaluacion_id TEXT,
+        solicitud_id TEXT,
+        cliente_id TEXT,
+        chat_id TEXT NOT NULL,
+        tipo_alerta TEXT NOT NULL,
+        nivel_riesgo TEXT NOT NULL,
+        mensaje TEXT NOT NULL,
+        estado_envio TEXT NOT NULL DEFAULT 'ENVIADO',
+        reintentos INTEGER DEFAULT 0,
+        error_detalle TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
-
-    CREATE TABLE IF NOT EXISTS promesas_pago (
-        id TEXT PRIMARY KEY,
-        cliente_id TEXT NOT NULL,
-        monto_comprometido REAL NOT NULL CHECK (monto_comprometido > 0),
-        fecha_prometida TEXT NOT NULL,
-        observaciones TEXT,
-        responsable_id TEXT NOT NULL,
-        responsable_nombre TEXT NOT NULL,
-        registrado_por TEXT NOT NULL,
-        estado TEXT NOT NULL DEFAULT 'PENDIENTE'
-            CHECK (estado IN ('PENDIENTE', 'VENCIDA', 'CUMPLIDA', 'INCUMPLIDA')),
-        alerta_proxima_enviada INTEGER NOT NULL DEFAULT 0,
-        alerta_incumplimiento_enviada INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT
-    );
-
-    CREATE TABLE IF NOT EXISTS transacciones_pago (
-        id TEXT PRIMARY KEY,
-        cuota_id TEXT NOT NULL,
-        solicitud_id TEXT NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
-        cliente_id TEXT NOT NULL,
-        promesa_id TEXT,
-        monto REAL NOT NULL CHECK (monto > 0),
-        metodo_pago TEXT NOT NULL,
-        registrado_por TEXT NOT NULL,
-        fecha_pago TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (cuota_id) REFERENCES pagos(id) ON DELETE RESTRICT,
-        FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
-        FOREIGN KEY (promesa_id) REFERENCES promesas_pago(id) ON DELETE RESTRICT
-    );
-
-    CREATE TABLE IF NOT EXISTS telegram_notifications (
-        event_key TEXT PRIMARY KEY,
-        sent_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
-
-    # Additive migrations for SQLite databases created by earlier app versions.
-    client_columns = {row["name"] for row in cur.execute("PRAGMA table_info(clientes)").fetchall()}
-    for column, definition in (
-        ("provincia", "TEXT"),
-        ("distrito", "TEXT"),
-        ("latitud", "REAL"),
-        ("longitud", "REAL"),
-    ):
-        if column not in client_columns:
-            cur.execute(f"ALTER TABLE clientes ADD COLUMN {column} {definition}")
-
-    application_columns = {row["name"] for row in cur.execute("PRAGMA table_info(solicitudes_credito)").fetchall()}
-    for column, definition in (
-        ("monto_desembolsado", "REAL"),
-        ("fecha_desembolso", "TEXT"),
-    ):
-        if column not in application_columns:
-            cur.execute(f"ALTER TABLE solicitudes_credito ADD COLUMN {column} {definition}")
-
-    cur.execute("""
-        CREATE TRIGGER IF NOT EXISTS historial_decisiones_no_update
-        BEFORE UPDATE ON historial_decisiones
-        BEGIN SELECT RAISE(ABORT, 'historial_decisiones is append-only'); END
-    """)
-    cur.execute("""
-        CREATE TRIGGER IF NOT EXISTS historial_decisiones_no_delete
-        BEFORE DELETE ON historial_decisiones
-        BEGIN SELECT RAISE(ABORT, 'historial_decisiones is append-only'); END
-    """)
-    cur.execute("""
-        CREATE TRIGGER IF NOT EXISTS solicitudes_con_historial_no_delete
-        BEFORE DELETE ON solicitudes_credito
-        WHEN EXISTS (SELECT 1 FROM historial_decisiones WHERE solicitud_id = OLD.id)
-        BEGIN SELECT RAISE(ABORT, 'credit decision history prevents deletion'); END
-    """)
-    cur.execute("""
-        CREATE TRIGGER IF NOT EXISTS clientes_con_historial_no_delete
-        BEFORE DELETE ON clientes
-        WHEN EXISTS (SELECT 1 FROM historial_decisiones WHERE cliente_id = OLD.id)
-        BEGIN SELECT RAISE(ABORT, 'credit decision history prevents deletion'); END
     """)
 
     # Verificar si ya existen usuarios

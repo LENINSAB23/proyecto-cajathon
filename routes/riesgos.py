@@ -1,10 +1,9 @@
 import json
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.auth import login_required, role_required
 from database.db import new_id, query_db, execute_db
 from services.ia_service import analizar_riesgo_con_ia
-from services.financial_health import record_decision
-from services.telegram_service import notify_telegram
 
 riesgos_bp = Blueprint('riesgos', __name__, url_prefix='/riesgos')
 
@@ -98,7 +97,8 @@ def evaluar(solicitud_id):
 def procesar_ia(solicitud_id):
     """Ejecuta el análisis de IA (OpenAI o Motor Demo) y guarda la evaluación en la base de datos."""
     solicitud = query_db("""
-        SELECT s.*, c.nombres, c.apellidos, c.dni, c.edad, c.ocupacion, c.sector_economico, c.id as cliente_real_id
+        SELECT s.*, c.nombres, c.apellidos, c.dni, c.edad, c.ocupacion, c.sector_economico,
+               c.id as cliente_real_id, c.codigo_cliente
         FROM solicitudes_credito s
         JOIN clientes c ON s.cliente_id = c.id
         WHERE s.id = ?
@@ -177,24 +177,31 @@ def procesar_ia(solicitud_id):
             resultado['recomendaciones'][:200]
         ))
 
-    evaluation_snapshot = query_db(
-        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
-        (solicitud_id,), one=True
-    )
-    request_snapshot = query_db(
-        "SELECT * FROM solicitudes_credito WHERE id = ?",
-        (solicitud_id,), one=True
-    )
-    record_decision(
-        "EVALUACION_IA", request_snapshot, evaluation_snapshot, "EVALUADO",
-        resultado["recomendaciones"], session.get("user_id"), analista_nombre,
-    )
-    if resultado["nivel_riesgo"] == "ALTO":
-        notify_telegram(
-            f"high-risk-credit:{eval_id}:{evaluation_snapshot['created_at']}",
-            f"Evaluación de alto riesgo registrada para la solicitud {solicitud['numero_solicitud']}. "
-            f"Score: {resultado['score_riesgo']}/100. Requiere revisión humana.",
+    # ENVÍO AUTOMÁTICO A TELEGRAM: Detección y notificación automática de riesgo alto
+    try:
+        from services.telegram_service import procesar_alerta_riesgo_automatica
+        datos_eval_notif = {
+            'id': eval_id,
+            'nivel_riesgo': resultado['nivel_riesgo'],
+            'score_riesgo': resultado['score_riesgo'],
+            'senales_alerta': resultado.get('senales_alerta'),
+            'factores_negativos': resultado.get('factores_negativos'),
+            'resumen_evaluacion': resultado.get('resumen_evaluacion'),
+            'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        datos_cli_notif = {
+            'id': solicitud['cliente_id'],
+            'codigo_cliente': solicitud.get('codigo_cliente') or f"CLI-{solicitud['cliente_id'][:8]}"
+        }
+        res_tg = procesar_alerta_riesgo_automatica(
+            datos_evaluacion=datos_eval_notif,
+            datos_solicitud=solicitud,
+            datos_cliente=datos_cli_notif
         )
+        if res_tg.get("alerta_emitida"):
+            print(f"[INFO] Alerta Telegram enviada automáticamente para solicitud {solicitud.get('numero_solicitud')}")
+    except Exception as e_tg:
+        print(f"[WARN] No se pudo procesar alerta de Telegram: {e_tg}")
 
     flash(f'Análisis de Inteligencia Artificial completado con éxito ({resultado["modelo_ia_utilizado"]}). Riesgo asignado: {resultado["nivel_riesgo"]} (Score: {resultado["score_riesgo"]}).', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
@@ -212,21 +219,7 @@ def dictamen_humano(solicitud_id):
         'REQUIERE_GARANTIA': 'OBSERVADO',
         'DENEGADO': 'RECHAZADO'
     }
-    if decision not in estado_map:
-        flash('El dictamen seleccionado no es válido.', 'danger')
-        return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
-    evaluacion = query_db(
-        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
-        (solicitud_id,), one=True
-    )
-    solicitud = query_db(
-        "SELECT * FROM solicitudes_credito WHERE id = ?",
-        (solicitud_id,), one=True
-    )
-    if not evaluacion or not solicitud:
-        flash('Debe existir una evaluación antes de registrar un dictamen.', 'warning')
-        return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
-    nuevo_estado = estado_map[decision]
+    nuevo_estado = estado_map.get(decision, 'OBSERVADO')
 
     execute_db("""
         UPDATE evaluaciones_riesgo SET
@@ -240,17 +233,25 @@ def dictamen_humano(solicitud_id):
         WHERE id = ?
     """, (nuevo_estado, observaciones if nuevo_estado == 'RECHAZADO' else None, solicitud_id))
 
-    solicitud = query_db(
-        "SELECT * FROM solicitudes_credito WHERE id = ?",
-        (solicitud_id,), one=True
-    )
-    evaluacion = query_db(
-        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
-        (solicitud_id,), one=True
-    )
-    record_decision(
-        "DICTAMEN_HUMANO", solicitud, evaluacion, nuevo_estado, observaciones,
-        session.get("user_id"), session.get("user_name", "Funcionario"),
-    )
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
+
+@riesgos_bp.route('/bank-ito/chat', methods=['POST'])
+@login_required
+def bankito_chat():
+    """Endpoint interactivo para conversar con Bank-ito Copilot."""
+    from services.ia_service import consultar_bankito_copilot
+    data = request.get_json(silent=True) or {}
+    pregunta = data.get('mensaje', '').strip()
+    contexto = data.get('contexto', {})
+    
+    if not pregunta:
+        return jsonify({'success': False, 'error': 'Mensaje vacío'}), 400
+        
+    respuesta = consultar_bankito_copilot(pregunta, contexto=contexto)
+    return jsonify({
+        'success': True,
+        'respuesta': respuesta,
+        'autor': 'Bank-ito Copilot',
+        'modelo': 'Google Gemini / SBS AI'
+    })
