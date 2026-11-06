@@ -14,6 +14,7 @@ from routes.geografia import geografia_bp
 from routes.decisiones import decisiones_bp
 from routes.salud import salud_bp
 from routes.promesas import promesas_bp
+from routes.telegram_webhook import telegram_bp
 
 def create_app():
     app = Flask(__name__)
@@ -40,6 +41,7 @@ def create_app():
     app.register_blueprint(decisiones_bp)
     app.register_blueprint(salud_bp)
     app.register_blueprint(promesas_bp)
+    app.register_blueprint(telegram_bp)
 
     @app.get('/health')
     def health():

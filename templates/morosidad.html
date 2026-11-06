@@ -195,9 +195,16 @@
           </td>
           <td class="text-end">
             {% if p.estado_pago != 'PAGADO' %}
-            <button type="button" class="btn btn-sm btn-fintech-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalPagar{{ p.id }}">
-              <i class="fa-solid fa-money-bill-check me-1"></i>Abonar
-            </button>
+            <div class="d-inline-flex gap-1 align-items-center">
+              <form action="{{ url_for('morosidad.enviar_recordatorio_telegram', pago_id=p.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Enviar recordatorio de pago a Telegram para este cliente?');">
+                <button type="submit" class="btn btn-sm btn-outline-primary py-1 px-2" title="Enviar recordatorio o aviso de cobro a Telegram">
+                  <i class="fa-brands fa-telegram text-primary me-1"></i>Aviso
+                </button>
+              </form>
+              <button type="button" class="btn btn-sm btn-fintech-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalPagar{{ p.id }}">
+                <i class="fa-solid fa-money-bill-check me-1"></i>Abonar
+              </button>
+            </div>
             {% else %}
             <span class="small text-muted"><i class="fa-solid fa-check-double text-success me-1"></i>Cancelado</span>
             {% endif %}

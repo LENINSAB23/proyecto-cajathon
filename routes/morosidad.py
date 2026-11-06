@@ -233,3 +233,21 @@ def crear_alerta():
 
     flash('Alerta preventiva generada exitosamente y notificada al equipo de cobranzas.', 'success')
     return redirect(url_for('morosidad.index'))
+
+@morosidad_bp.route('/enviar-recordatorio-telegram/<pago_id>', methods=['POST'])
+@login_required
+@role_required('Administrador', 'Personal de cobranza')
+def enviar_recordatorio_telegram(pago_id):
+    """Envía un recordatorio preventivo de pago o aviso formal de mora al Telegram del cliente."""
+    from services.telegram_service import enviar_recordatorio_cuota_telegram
+    try:
+        res = enviar_recordatorio_cuota_telegram(pago_id)
+        if res.get("enviado"):
+            flash('Recordatorio institucional de pago enviado con éxito a Telegram.', 'success')
+        else:
+            motivo = res.get("motivo") or res.get("error", "Error en el envío")
+            flash(f'No se pudo enviar la notificación a Telegram: {motivo}', 'warning')
+    except Exception as e:
+        flash(f'Error al procesar el recordatorio para Telegram: {e}', 'danger')
+
+    return redirect(url_for('morosidad.index'))

@@ -418,8 +418,54 @@ def run_tests():
     assert notif_audit['nivel_riesgo'] == 'ALTO'
     print("28. [PASS] Registro auditable en tabla notificaciones_telegram")
 
+    # 29. Webhook interactivo de Telegram y comando /start
+    with patch('services.telegram_service.requests.post') as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 101}}
+        res_hook = client.post('/telegram/webhook', json={
+            'message': {'chat': {'id': '6237089936'}, 'text': '/start'}
+        })
+        assert res_hook.status_code == 200
+        assert res_hook.get_json()['ok'] is True
+    print("29. [PASS] Webhook interactivo de Telegram y bienvenida oficial con menú")
+
+    # 30. Comandos interactivos de Telegram (/pagar, /deuda, /historial)
+    from services.telegram_service import procesar_mensaje_entrante_telegram
+    with patch('services.telegram_service.requests.post') as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 102}}
+        res_pagar = procesar_mensaje_entrante_telegram({'message': {'chat': {'id': '6237089936'}, 'text': '/pagar'}})
+        assert res_pagar['enviado'] is True
+        res_deuda = procesar_mensaje_entrante_telegram({'message': {'chat': {'id': '6237089936'}, 'text': '/deuda'}})
+        assert res_deuda['enviado'] is True
+        res_hist = procesar_mensaje_entrante_telegram({'message': {'chat': {'id': '6237089936'}, 'text': '/historial'}})
+        assert res_hist['enviado'] is True
+    print("30. [PASS] Comandos interactivos de Telegram (/pagar, /deuda, /historial)")
+
+    # 31. Registro interactivo de promesa de pago vía Telegram
+    with patch('services.telegram_service.requests.post') as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 103}}
+        res_prm = procesar_mensaje_entrante_telegram({
+            'message': {'chat': {'id': '6237089936'}, 'text': '/promesa 2026-11-28 650.00'}
+        })
+        assert res_prm['enviado'] is True
+        prm_reg = query_db("SELECT * FROM promesas_pago WHERE monto_comprometido = 650.00", one=True)
+        assert prm_reg is not None and prm_reg['fecha_prometida'] == '2026-11-28'
+    print("31. [PASS] Registro automático de promesas de pago desde Telegram")
+
+    # 32. Envío de recordatorio oficial de cuota desde el módulo de morosidad
+    pago_item = query_db("SELECT id FROM pagos WHERE estado_pago != 'PAGADO' LIMIT 1", one=True)
+    if pago_item:
+        with patch('services.telegram_service.requests.post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 104}}
+            res_rec = client.post(f"/morosidad/enviar-recordatorio-telegram/{pago_item['id']}", follow_redirects=True)
+            assert res_rec.status_code == 200
+    print("32. [PASS] Disparo de recordatorio de cuota / aviso de cobro desde morosidad")
+
     print("\n==================================================================")
-    print("  TODAS LAS 28 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
+    print("  TODAS LAS 32 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
     print("==================================================================\n")
 
 if __name__ == '__main__':
