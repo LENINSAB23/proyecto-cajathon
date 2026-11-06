@@ -61,3 +61,4 @@ def info_webhook():
         "chat_id_detectado": chat_id,
         "bot_username": "@CreditRiskMonitor2bot"
     })
+
