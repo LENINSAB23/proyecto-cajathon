@@ -71,16 +71,9 @@ class Config:
                 raise RuntimeError("DEMO_MODE debe estar desactivado en producción.")
             if cls.DEMO_LOGIN_ENABLED:
                 raise RuntimeError("DEMO_LOGIN_ENABLED debe estar desactivado en producción.")
-            missing = [
-                name for name, value in (
-                    ("DATABASE_URL", cls.DATABASE_URL),
-                    ("SUPABASE_URL", cls.SUPABASE_URL),
-                    ("SUPABASE_KEY", cls.SUPABASE_KEY),
-                ) if not value
-            ]
-            if missing:
-                raise RuntimeError(
-                    "Faltan variables obligatorias para producción: " + ", ".join(missing)
-                )
+            if not cls.DATABASE_URL:
+                raise RuntimeError("DATABASE_URL es obligatorio en producción.")
+            if not cls.SUPABASE_URL or not cls.SUPABASE_KEY:
+                print("[WARN] SUPABASE_URL o SUPABASE_KEY no definidos en Render. Configúralos en Render -> Environment para activar Supabase Auth.")
         if cls.USE_SUPABASE_AUTH and not cls.DATABASE_URL:
             raise RuntimeError("DATABASE_URL es obligatorio cuando se usa Supabase Auth.")
