@@ -6,6 +6,9 @@ from database.db import new_id, query_db
 from config import Config
 from routes.auth import authenticate_user
 from supabase import AuthError
+from datetime import date, timedelta
+import sqlite3
+import time
 
 def test_postgres_query_adapter():
     class FakeCursor:
@@ -243,7 +246,110 @@ def run_tests():
     assert client.get('/demo-login/invalid').status_code == 404
     print("18. [PASS] Rechazo de perfiles de demostración desconocidos")
 
-    # 19. Automatización Telegram: Reglas de riesgo bajo y medio
+    # 19. Geographic concentration and privacy-safe aggregation
+    res = client.get('/concentracion/?riesgo=ALTO')
+    assert res.status_code == 200 and b'OpenStreetMap' in res.data
+    assert b'DNI' not in res.data and b'Latitud' not in res.data
+    print("19. [PASS] Mapa agregado, filtros y ausencia de identificadores personales")
+
+    # 20. Decision snapshots and append-only history
+    history = query_db(
+        "SELECT * FROM historial_decisiones WHERE solicitud_id = ? ORDER BY created_at DESC",
+        ('sol-011',)
+    )
+    assert len(history) >= 2
+    assert '"evaluacion"' in history[-1]['snapshot_json']
+    try:
+        from database.db import execute_db
+        execute_db("UPDATE historial_decisiones SET observaciones = 'alterado' WHERE id = ?", (history[-1]['id'],))
+        raise AssertionError("Decision audit must reject updates")
+    except sqlite3.IntegrityError:
+        pass
+    assert client.get('/decisiones/').status_code == 200
+    assert client.get('/decisiones/exportar/excel').status_code == 200
+    assert client.get('/decisiones/exportar/pdf').status_code == 200
+    print("20. [PASS] Snapshots auditables, exportación e inmutabilidad")
+
+    # 21. Real disbursement registration, health indicators and exports
+    approved_application = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = 'sol-011'",
+        one=True
+    )
+    execute_db(
+        "UPDATE solicitudes_credito SET monto_desembolsado = NULL, fecha_desembolso = NULL WHERE id = ?",
+        ('sol-011',)
+    )
+    disbursement = client.post(
+        f"/salud-financiera/registrar-desembolso/{approved_application['id']}",
+        data={
+            'monto_desembolsado': str(min(100, float(approved_application['monto_solicitado']))),
+            'fecha_desembolso': date.today().isoformat(),
+        },
+        follow_redirects=True
+    )
+    assert disbursement.status_code == 200
+    health_page = client.get('/salud-financiera/')
+    assert health_page.status_code == 200 and b'No disponible' in health_page.data
+    assert client.get('/salud-financiera/exportar/excel').status_code == 200
+    assert client.get('/salud-financiera/exportar/pdf').status_code == 200
+    print("21. [PASS] Desembolso real, salud financiera y reportes")
+
+    # 22. Promises and actual partial collection payment association
+    outstanding_payment = query_db(
+        "SELECT p.* FROM pagos p WHERE p.estado_pago != 'PAGADO' ORDER BY p.id LIMIT 1",
+        one=True
+    )
+    assert outstanding_payment
+    user_id = query_db("SELECT id FROM usuarios WHERE email = ?", ('admin@creditrisk.pe',), one=True)['id']
+    note = f"prueba-{time.time_ns()}"
+    promise_create = client.post('/promesas/crear', data={
+        'cliente_id': outstanding_payment['cliente_id'],
+        'monto_comprometido': '1.00',
+        'fecha_prometida': (date.today() + timedelta(days=1)).isoformat(),
+        'responsable_id': user_id,
+        'observaciones': note,
+    }, follow_redirects=True)
+    assert promise_create.status_code == 200
+    promise = query_db("SELECT * FROM promesas_pago WHERE observaciones = ?", (note,), one=True)
+    assert promise and promise['estado'] == 'PENDIENTE'
+    payment_result = client.post(
+        f"/morosidad/registrar-pago/{outstanding_payment['id']}",
+        data={
+            'metodo_pago': 'Prueba',
+            'monto_pagado': '1.00',
+            'promesa_id': promise['id'],
+        },
+        follow_redirects=True
+    )
+    assert payment_result.status_code == 200
+    transaction = query_db("SELECT * FROM transacciones_pago WHERE promesa_id = ?", (promise['id'],), one=True)
+    assert transaction and float(transaction['monto']) == 1
+    assert client.get('/promesas/').status_code == 200
+    promise = query_db("SELECT estado FROM promesas_pago WHERE id = ?", (promise['id'],), one=True)
+    assert promise['estado'] == 'CUMPLIDA'
+    print("22. [PASS] Promesas, abonos parciales y cumplimiento automático")
+
+    # 23. Role separation for the new modules
+    assert analista_client.get('/concentracion/').status_code == 200
+    assert analista_client.get('/decisiones/').status_code == 200
+    assert analista_client.get('/salud-financiera/').status_code == 302
+    assert analista_client.get('/promesas/').status_code == 302
+    assert cobranzas_client.get('/concentracion/').status_code == 200
+    assert cobranzas_client.get('/promesas/').status_code == 200
+    assert cobranzas_client.get('/decisiones/').status_code == 302
+    assert cobranzas_client.get('/salud-financiera/').status_code == 302
+    print("23. [PASS] Permisos diferenciados en los cuatro módulos")
+
+    # 24. Telegram outage is non-fatal and does not expose credentials
+    from services.telegram_service import notify_telegram
+    with app.app_context():
+        app.config['TELEGRAM_BOT_TOKEN'] = 'test-secret'
+        app.config['TELEGRAM_CHAT_ID'] = 'test-chat'
+        with patch('services.telegram_service.requests.post', side_effect=RuntimeError('network down')):
+            assert notify_telegram(f'telegram-test-{time.time_ns()}', 'test notification') is False
+    print("24. [PASS] Errores de Telegram no interrumpen la aplicación")
+
+    # 25. Automatización Telegram: Reglas de riesgo bajo y medio
     from services.telegram_service import (
         procesar_alerta_riesgo_automatica,
         formatear_mensaje_alerta,
@@ -262,9 +368,9 @@ def run_tests():
         datos_cliente={'id': 'cli-tg-medio', 'codigo_cliente': 'CLI-TEST-002'}
     )
     assert res_medio['alerta_emitida'] is False
-    print("19. [PASS] Reglas Telegram: Riesgo Bajo y Medio no generan alertas críticas")
+    print("25. [PASS] Reglas Telegram: Riesgo Bajo y Medio no generan alertas críticas")
 
-    # 20. Formato estricto de mensaje Telegram sin PII
+    # 26. Formato estricto de mensaje Telegram sin PII
     msg_alerta = formatear_mensaje_alerta(
         codigo_cliente='CLI-2024-001',
         numero_solicitud='SOL-2024-001',
@@ -277,9 +383,9 @@ def run_tests():
     assert 'Código del crédito: SOL-2024-001' in msg_alerta
     assert 'Nivel de riesgo: ALTO' in msg_alerta
     assert 'DNI' not in msg_alerta and 'telefono' not in msg_alerta
-    print("20. [PASS] Formato de alerta a Telegram seguro (sin datos sensibles PII)")
+    print("26. [PASS] Formato de alerta a Telegram seguro (sin datos sensibles PII)")
 
-    # 21. Idempotencia y prevención de duplicados
+    # 27. Idempotencia y prevención de duplicados
     eval_tg_id = 'eval-idemp-001'
     sol_tg_id = 'sol-idemp-001'
     cli_tg_id = 'cli-idemp-001'
@@ -302,17 +408,17 @@ def run_tests():
     )
     assert res_idemp['alerta_emitida'] is False
     assert 'idempotencia' in res_idemp['motivo']
-    print("21. [PASS] Idempotencia estricta en Telegram (evita duplicados)")
+    print("27. [PASS] Idempotencia estricta en Telegram (evita duplicados)")
 
-    # 22. Auditoría en tabla notificaciones_telegram
+    # 28. Auditoría en tabla notificaciones_telegram
     notif_audit = query_db("SELECT * FROM notificaciones_telegram WHERE evaluacion_id = ?", (eval_tg_id,), one=True)
     assert notif_audit is not None
     assert notif_audit['estado_envio'] == 'ENVIADO'
     assert notif_audit['nivel_riesgo'] == 'ALTO'
-    print("22. [PASS] Registro auditable en tabla notificaciones_telegram")
+    print("28. [PASS] Registro auditable en tabla notificaciones_telegram")
 
     print("\n==================================================================")
-    print("  TODAS LAS 22 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
+    print("  TODAS LAS 28 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
     print("==================================================================\n")
 
 if __name__ == '__main__':

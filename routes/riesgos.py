@@ -177,6 +177,24 @@ def procesar_ia(solicitud_id):
             resultado['recomendaciones'][:200]
         ))
 
+    # Auditoría inmutable de decisiones financieras
+    evaluation_snapshot = query_db(
+        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
+        (solicitud_id,), one=True
+    )
+    request_snapshot = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = ?",
+        (solicitud_id,), one=True
+    )
+    try:
+        from services.financial_health import record_decision
+        record_decision(
+            "EVALUACION_IA", request_snapshot, evaluation_snapshot, "EVALUADO",
+            resultado["recomendaciones"], session.get("user_id"), analista_nombre,
+        )
+    except Exception as e_dec:
+        print(f"[WARN] Error registrando snapshot de decision IA: {e_dec}")
+
     # ENVÍO AUTOMÁTICO A TELEGRAM: Detección y notificación automática de riesgo alto
     try:
         from services.telegram_service import procesar_alerta_riesgo_automatica
@@ -232,6 +250,24 @@ def dictamen_humano(solicitud_id):
             estado = ?, motivo_rechazo = ?
         WHERE id = ?
     """, (nuevo_estado, observaciones if nuevo_estado == 'RECHAZADO' else None, solicitud_id))
+
+    # Auditoría inmutable de dictamen humano vinculante
+    solicitud = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = ?",
+        (solicitud_id,), one=True
+    )
+    evaluacion = query_db(
+        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
+        (solicitud_id,), one=True
+    )
+    try:
+        from services.financial_health import record_decision
+        record_decision(
+            "DICTAMEN_HUMANO", solicitud, evaluacion, nuevo_estado, observaciones,
+            session.get("user_id"), session.get("user_name", "Funcionario"),
+        )
+    except Exception as e_dec:
+        print(f"[WARN] Error registrando decision de dictamen humano: {e_dec}")
 
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))

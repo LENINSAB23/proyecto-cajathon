@@ -125,11 +125,11 @@ def registrar_notificacion_en_bd(evaluacion_id: str, solicitud_id: str, cliente_
     except Exception as e:
         print(f"[WARN] Error al registrar notificación en base de datos: {e}")
 
-def enviar_mensaje_telegram(mensaje: str, chat_id: str = None, max_reintentos: int = 3) -> dict:
+def enviar_mensaje_telegram(mensaje: str, chat_id: str = None, max_reintentos: int = 3, bot_token: str = None) -> dict:
     """
     Envía un mensaje a la API de Telegram con política de reintentos automáticos.
     """
-    token = Config.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN", "")
+    token = bot_token or Config.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN", "")
     if not token:
         return {"enviado": False, "motivo": "TELEGRAM_BOT_TOKEN no configurado en variables de entorno"}
 
@@ -175,6 +175,50 @@ def enviar_mensaje_telegram(mensaje: str, chat_id: str = None, max_reintentos: i
         "intentos": max_reintentos,
         "error": ultimo_error
     }
+
+def notify_telegram(event_key: str, message: str) -> bool:
+    """
+    Envía una notificación a Telegram una sola vez por evento (idempotencia)
+    sin bloquear los flujos de la aplicación.
+    Registra el evento en telegram_notifications para no duplicar envíos.
+    """
+    try:
+        from flask import current_app, has_app_context
+        if has_app_context() and current_app:
+            token = current_app.config.get("TELEGRAM_BOT_TOKEN") or Config.TELEGRAM_BOT_TOKEN
+            chat_id = current_app.config.get("TELEGRAM_CHAT_ID") or Config.TELEGRAM_CHAT_ID
+        else:
+            token = Config.TELEGRAM_BOT_TOKEN
+            chat_id = Config.TELEGRAM_CHAT_ID
+    except Exception:
+        token = Config.TELEGRAM_BOT_TOKEN
+        chat_id = Config.TELEGRAM_CHAT_ID
+
+    token = token or Config.TELEGRAM_BOT_TOKEN
+    chat_id = chat_id or obtener_chat_id_telegram(token)
+    if not token or not chat_id:
+        return False
+
+    try:
+        existe = query_db(
+            "SELECT event_key FROM telegram_notifications WHERE event_key = ?",
+            (event_key,),
+            one=True
+        )
+        if existe:
+            return False
+
+        res = enviar_mensaje_telegram(message, chat_id=chat_id, bot_token=token)
+        if res.get("enviado"):
+            execute_db(
+                "INSERT INTO telegram_notifications (event_key) VALUES (?)",
+                (event_key,)
+            )
+            return True
+        return False
+    except Exception as e:
+        print(f"[WARN] No se pudo enviar notificación de Telegram para evento {event_key}: {e}")
+        return False
 
 def procesar_alerta_riesgo_automatica(datos_evaluacion: dict, datos_solicitud: dict, datos_cliente: dict) -> dict:
     """

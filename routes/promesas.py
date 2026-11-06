@@ -12,11 +12,12 @@ promesas_bp = Blueprint("promesas", __name__, url_prefix="/promesas")
 
 def _refresh_statuses():
     promises = query_db("""
-        SELECT p.*, COALESCE(SUM(t.monto), 0) AS pagado
+        SELECT p.*, c.codigo_cliente, COALESCE(SUM(t.monto), 0) AS pagado
         FROM promesas_pago p
+        LEFT JOIN clientes c ON c.id = p.cliente_id
         LEFT JOIN transacciones_pago t ON t.promesa_id = p.id
         WHERE p.estado IN ('PENDIENTE', 'VENCIDA', 'INCUMPLIDA')
-        GROUP BY p.id
+        GROUP BY p.id, c.id
     """)
     today = date.today()
     for promise in promises:
@@ -34,12 +35,13 @@ def _refresh_statuses():
                 "UPDATE promesas_pago SET estado = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (next_status, promise["id"]),
             )
+        cod_cliente = promise.get("codigo_cliente") or f"CLI-{str(promise['cliente_id'])[:8]}"
         if next_status == "INCUMPLIDA" and not promise["alerta_incumplimiento_enviada"]:
             _create_alert(promise, "Promesa de pago incumplida", "ALTA")
             execute_db("UPDATE promesas_pago SET alerta_incumplimiento_enviada = TRUE WHERE id = ?", (promise["id"],))
             notify_telegram(
                 f"promise-missed:{promise['id']}",
-                f"Promesa de pago incumplida: cliente {promise['codigo_cliente']}, "
+                f"Promesa de pago incumplida: cliente {cod_cliente}, "
                 f"compromiso S/ {amount_due:.2f} para {promised_date.isoformat()}.",
             )
         elif next_status in ("PENDIENTE", "VENCIDA") and promised_date <= today + timedelta(days=3) and not promise["alerta_proxima_enviada"]:
@@ -47,7 +49,7 @@ def _refresh_statuses():
             execute_db("UPDATE promesas_pago SET alerta_proxima_enviada = TRUE WHERE id = ?", (promise["id"],))
             notify_telegram(
                 f"promise-due-soon:{promise['id']}",
-                f"Promesa de pago próxima a vencer: cliente {promise['codigo_cliente']}, "
+                f"Promesa de pago próxima a vencer: cliente {cod_cliente}, "
                 f"compromiso S/ {amount_due:.2f} para {promised_date.isoformat()}.",
             )
 

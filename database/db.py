@@ -79,6 +79,39 @@ def execute_db(query, args=()):
     finally:
         conn.close()
 
+def execute_transaction(statements):
+    """Ejecuta una secuencia de operaciones parametrizadas dentro de una sola transacción atómica."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        row_counts = []
+        is_postgres = bool(Config.DATABASE_URL)
+        for item in statements:
+            if isinstance(item, (list, tuple)):
+                query = item[0]
+                args = item[1] if len(item) > 1 else ()
+            else:
+                query = item
+                args = ()
+            if is_postgres:
+                query = query.replace("?", "%s")
+                cur.execute(query, args)
+            else:
+                cur.execute(query, args)
+            row_counts.append(cur.rowcount)
+        conn.commit()
+        cur.close()
+        return row_counts
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+def close_app_connection(_error=None):
+    """Teardown helper opcional para contexto de aplicación Flask."""
+    pass
+
 def new_id(prefix):
     """Genera UUIDs compatibles con Supabase y prefijos legibles en SQLite demo."""
     import uuid
@@ -90,7 +123,9 @@ def init_db():
     if Config.DATABASE_URL:
         expected_tables = {
             "usuarios", "clientes", "solicitudes_credito", "evaluaciones_riesgo",
-            "pagos", "alertas", "historial_crediticio"
+            "pagos", "alertas", "historial_crediticio", "historial_decisiones",
+            "promesas_pago", "transacciones_pago", "telegram_notifications",
+            "notificaciones_telegram"
         }
         conn = get_connection()
         try:
@@ -267,6 +302,89 @@ def init_db():
         error_detalle TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS historial_decisiones (
+        id TEXT PRIMARY KEY,
+        solicitud_id TEXT NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
+        cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
+        actor_id TEXT NOT NULL,
+        actor_nombre TEXT NOT NULL,
+        tipo_evento TEXT NOT NULL,
+        estado_decision TEXT,
+        nivel_riesgo TEXT,
+        score_riesgo INTEGER,
+        observaciones TEXT,
+        snapshot_json TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS promesas_pago (
+        id TEXT PRIMARY KEY,
+        cliente_id TEXT NOT NULL,
+        monto_comprometido REAL NOT NULL CHECK (monto_comprometido > 0),
+        fecha_prometida TEXT NOT NULL,
+        observaciones TEXT,
+        responsable_id TEXT NOT NULL,
+        responsable_nombre TEXT NOT NULL,
+        registrado_por TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'PENDIENTE'
+            CHECK (estado IN ('PENDIENTE', 'VENCIDA', 'CUMPLIDA', 'INCUMPLIDA')),
+        alerta_proxima_enviada INTEGER NOT NULL DEFAULT 0,
+        alerta_incumplimiento_enviada INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT
+    );
+
+    CREATE TABLE IF NOT EXISTS transacciones_pago (
+        id TEXT PRIMARY KEY,
+        cuota_id TEXT NOT NULL,
+        solicitud_id TEXT NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
+        cliente_id TEXT NOT NULL,
+        promesa_id TEXT,
+        monto REAL NOT NULL CHECK (monto > 0),
+        metodo_pago TEXT NOT NULL,
+        registrado_por TEXT NOT NULL,
+        fecha_pago TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cuota_id) REFERENCES pagos(id) ON DELETE RESTRICT,
+        FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
+        FOREIGN KEY (promesa_id) REFERENCES promesas_pago(id) ON DELETE RESTRICT
+    );
+
+    CREATE TABLE IF NOT EXISTS telegram_notifications (
+        event_key TEXT PRIMARY KEY,
+        sent_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # Migraciones aditivas para SQLite
+    client_columns = {row["name"] for row in cur.execute("PRAGMA table_info(clientes)").fetchall()}
+    for column, definition in (
+        ("provincia", "TEXT"),
+        ("distrito", "TEXT"),
+        ("latitud", "REAL"),
+        ("longitud", "REAL"),
+    ):
+        if column not in client_columns:
+            cur.execute(f"ALTER TABLE clientes ADD COLUMN {column} {definition}")
+
+    application_columns = {row["name"] for row in cur.execute("PRAGMA table_info(solicitudes_credito)").fetchall()}
+    for column, definition in (
+        ("monto_desembolsado", "REAL"),
+        ("fecha_desembolso", "TEXT"),
+    ):
+        if column not in application_columns:
+            cur.execute(f"ALTER TABLE solicitudes_credito ADD COLUMN {column} {definition}")
+
+    cur.execute("""
+        CREATE TRIGGER IF NOT EXISTS historial_decisiones_no_update
+        BEFORE UPDATE ON historial_decisiones
+        BEGIN SELECT RAISE(ABORT, 'historial_decisiones is append-only'); END
+    """)
+    cur.execute("""
+        CREATE TRIGGER IF NOT EXISTS historial_decisiones_no_delete
+        BEFORE DELETE ON historial_decisiones
+        BEGIN SELECT RAISE(ABORT, 'historial_decisiones is append-only'); END
     """)
 
     # Verificar si ya existen usuarios
