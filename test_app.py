@@ -135,6 +135,23 @@ def run_tests():
     assert b"Juan Carlos" in res.data
     print("4. [PASS] Módulo de gestión de clientes 360")
 
+    invalid_client = {
+        'nombres': 'Cliente',
+        'apellidos': 'Inválido',
+        'dni': '99999999',
+        'edad': '17',
+        'ocupacion': 'Comercio',
+        'ingresos_mensuales': '1000',
+        'gastos_mensuales': '500',
+        'deudas_actuales': '0',
+    }
+    client.post('/clientes/crear', data=invalid_client)
+    assert query_db("SELECT id FROM clientes WHERE dni = ?", ('99999999',), one=True) is None
+    invalid_client.update({'dni': '99999998', 'edad': '30', 'ingresos_mensuales': 'nan'})
+    client.post('/clientes/crear', data=invalid_client)
+    assert query_db("SELECT id FROM clientes WHERE dni = ?", ('99999998',), one=True) is None
+    print("4a. [PASS] Validación de edad e importes financieros al registrar clientes")
+
     # 5. Detalle cliente
     res = client.get('/clientes/cli-001/detalle')
     assert res.status_code == 200
@@ -419,7 +436,9 @@ def run_tests():
     print("28. [PASS] Registro auditable en tabla notificaciones_telegram")
 
     # 29. Webhook interactivo de Telegram y comando /start
-    with patch('services.telegram_service.requests.post') as mock_post:
+    with patch.object(Config, 'TELEGRAM_BOT_TOKEN', 'test-token'), \
+         patch.object(Config, 'TELEGRAM_CHAT_ID', '6237089936'), \
+         patch('services.telegram_service.requests.post') as mock_post:
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 101}}
         res_hook = client.post('/telegram/webhook', json={
@@ -431,7 +450,9 @@ def run_tests():
 
     # 30. Comandos interactivos de Telegram (/pagar, /deuda, /historial)
     from services.telegram_service import procesar_mensaje_entrante_telegram
-    with patch('services.telegram_service.requests.post') as mock_post:
+    with patch.object(Config, 'TELEGRAM_BOT_TOKEN', 'test-token'), \
+         patch.object(Config, 'TELEGRAM_CHAT_ID', '6237089936'), \
+         patch('services.telegram_service.requests.post') as mock_post:
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 102}}
         res_pagar = procesar_mensaje_entrante_telegram({'message': {'chat': {'id': '6237089936'}, 'text': '/pagar'}})
@@ -443,7 +464,9 @@ def run_tests():
     print("30. [PASS] Comandos interactivos de Telegram (/pagar, /deuda, /historial)")
 
     # 31. Registro interactivo de promesa de pago vía Telegram
-    with patch('services.telegram_service.requests.post') as mock_post:
+    with patch.object(Config, 'TELEGRAM_BOT_TOKEN', 'test-token'), \
+         patch.object(Config, 'TELEGRAM_CHAT_ID', '6237089936'), \
+         patch('services.telegram_service.requests.post') as mock_post:
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 103}}
         res_prm = procesar_mensaje_entrante_telegram({
@@ -457,7 +480,9 @@ def run_tests():
     # 32. Envío de recordatorio oficial de cuota desde el módulo de morosidad
     pago_item = query_db("SELECT id FROM pagos WHERE estado_pago != 'PAGADO' LIMIT 1", one=True)
     if pago_item:
-        with patch('services.telegram_service.requests.post') as mock_post:
+        with patch.object(Config, 'TELEGRAM_BOT_TOKEN', 'test-token'), \
+             patch.object(Config, 'TELEGRAM_CHAT_ID', '6237089936'), \
+             patch('services.telegram_service.requests.post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json.return_value = {'ok': True, 'result': {'message_id': 104}}
             res_rec = client.post(f"/morosidad/enviar-recordatorio-telegram/{pago_item['id']}", follow_redirects=True)

@@ -8,6 +8,7 @@ Plataforma Fintech SaaS empresarial diseñada para la prevención, identificaci�
 - **Bank-ito Copilot IA (Google Gemini):** Asistente financiero inteligente integrado en el drawer lateral y en la evaluación técnica de solicitudes (Score 0-100, fortalezas, factores de riesgo, alertas rojas y probabilidades de morosidad a 30 y 90 días).
 - **Simulador de Crédito en Tiempo Real:** Cálculo dinámico con sistema francés de amortización, evaluación de capacidad de pago mensual y ratio de endeudamiento DTI (*Debt-to-Income*).
 - **Gestión 360° de Clientes & Centrales de Riesgo:** Historial crediticio unificado, expediente financiero y clasificación regulatoria SBS.
+- **Validación de datos de clientes:** Verificación de edad (18 a 95 años), ocupación e importes financieros finitos y dentro de rangos válidos al registrar o editar clientes.
 - **Centro de Cobranzas y Morosidad:** Detección de mora temprana (1-8 días), seguimiento de cartera pesada (>30 días) y contacto prioritario de deudores.
 - **Reportes Financieros Auditables:** Exportación oficial en formato PDF con membrete institucional y hojas de cálculo Excel bancario (.xlsx).
 - **Diseño Fintech SaaS Profesional:** Estética de software financiero corporativo (azul marino `#0A192F`, azul petróleo `#0284C7`, grises neutros y semáforos de riesgo SBS sin adornos superfluos).
@@ -104,6 +105,7 @@ python -m compileall -q app.py routes database test_app.py
 ```
 
 La suite usa la base de datos local ficticia e integra autenticación por rol, módulos, IA de respaldo y exportaciones. Las pruebas no requieren claves de Supabase ni OpenAI.
+También comprueba que el registro rechace edades fuera del rango permitido e importes financieros no válidos, como `NaN`.
 
 ## Estructura principal
 
@@ -119,6 +121,8 @@ templates/              Vistas HTML/Jinja
 static/                 CSS, JavaScript e imágenes
 render.yaml             Configuración de despliegue
 ```
+
+La carpeta raíz es la única copia del proyecto. Los módulos que solo existían en una versión anterior, como decisiones, salud financiera, promesas de pago y alertas por Telegram, se conservaron en esta estructura principal. Se retiraron la carpeta anidada duplicada `proyecto-cajathon/` y el archivo ZIP que contenía otra copia del proyecto. La consolidación no modificó las credenciales locales de demostración ni las claves configuradas en el entorno.
 
 ## Principios de uso de IA
 

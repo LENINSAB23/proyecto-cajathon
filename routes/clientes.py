@@ -1,9 +1,21 @@
+import math
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from routes.auth import login_required, role_required
 from database.db import new_id, query_db, execute_db
 from services.credit_scoring import calcular_scoring_analitico
 
 clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
+
+def _datos_financieros_validos(edad, ingresos, gastos, deudas):
+    return (
+        18 <= edad <= 95
+        and all(math.isfinite(value) for value in (ingresos, gastos, deudas))
+        and ingresos > 0
+        and gastos >= 0
+        and deudas >= 0
+    )
+
 
 def _geographic_fields():
     department = request.form.get('departamento', '').strip() or None
@@ -66,6 +78,9 @@ def crear():
         # Validaciones
         if not (nombres and apellidos and dni and len(dni) == 8 and dni.isdigit()):
             flash('Por favor complete todos los datos obligatorios. El DNI debe tener 8 dígitos numéricos.', 'danger')
+            return redirect(url_for('clientes.index'))
+        if not ocupacion or not _datos_financieros_validos(edad, ingresos, gastos, deudas):
+            flash('La edad debe estar entre 18 y 95 años y los ingresos/gastos/deudas deben ser válidos.', 'danger')
             return redirect(url_for('clientes.index'))
 
         # Verificar duplicado de DNI
@@ -159,6 +174,10 @@ def editar(id):
         email = request.form.get('email', '').strip()
         direccion = request.form.get('direccion', '').strip()
         departamento, provincia, distrito, latitud, longitud = _geographic_fields()
+
+        if not (nombres and apellidos and ocupacion) or not _datos_financieros_validos(edad, ingresos, gastos, deudas):
+            flash('Complete los datos obligatorios y verifique edad e información financiera.', 'danger')
+            return redirect(url_for('clientes.index'))
 
         # Recalcular score preliminar
         scoring = calcular_scoring_analitico({
