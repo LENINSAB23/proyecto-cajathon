@@ -169,7 +169,7 @@
             <div class="fw-semibold">{{ p.nombres }} {{ p.apellidos }}</div>
             <small class="text-muted">Tel: {{ p.telefono or 'N/A' }}</small>
           </td>
-          <td class="fw-bold text-navy">S/. {{ "{:,.2f}".format(p.monto_cuota) }}</td>
+          <td class="fw-bold text-navy">S/. {{ "{:,.2f}".format(p.saldo_pendiente) }}</td>
           <td>{{ p.fecha_vencimiento }}</td>
           <td>
             {% if p.dias_atraso > 30 %}
@@ -215,13 +215,26 @@
               <form method="POST" action="{{ url_for('morosidad.registrar_pago', pago_id=p.id) }}">
                 <div class="modal-body">
                   <div class="mb-3 text-center py-2 bg-light rounded border">
-                    <span class="small text-muted text-uppercase d-block">Monto Total a Cancelar</span>
-                    <h3 class="fw-bold text-success mb-0">S/. {{ "{:,.2f}".format(p.monto_cuota + p.penalidad) }}</h3>
+                    <span class="small text-muted text-uppercase d-block">Saldo pendiente</span>
+                    <h3 class="fw-bold text-success mb-0">S/. {{ "{:,.2f}".format(p.saldo_pendiente) }}</h3>
                     <small class="text-muted">(Cuota: S/. {{ "{:,.2f}".format(p.monto_cuota) }} + Penalidad: S/. {{ "{:,.2f}".format(p.penalidad) }})</small>
                   </div>
                   <div class="mb-3">
                     <label class="form-label-fintech">Cliente Titular</label>
                     <input type="text" class="form-control form-control-fintech" value="{{ p.nombres }} {{ p.apellidos }}" readonly>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label-fintech">Monto realmente recibido *</label>
+                    <input type="number" name="monto_pagado" class="form-control form-control-fintech" min="0.01" max="{{ p.saldo_pendiente }}" step="0.01" value="{{ p.saldo_pendiente }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label-fintech">Promesa de pago relacionada</label>
+                    <select name="promesa_id" class="form-select form-select-fintech">
+                      <option value="">Sin promesa asociada</option>
+                      {% for promesa in promesas_activas if promesa.cliente_id == p.cliente_id %}
+                      <option value="{{ promesa.id }}">Compromiso S/. {{ "{:,.2f}".format(promesa.monto_comprometido) }} · {{ promesa.fecha_prometida }}</option>
+                      {% endfor %}
+                    </select>
                   </div>
                   <div class="mb-3">
                     <label class="form-label-fintech">Método de Cancelación *</label>

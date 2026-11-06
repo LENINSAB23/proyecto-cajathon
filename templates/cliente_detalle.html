@@ -16,6 +16,9 @@
     </div>
   </div>
   <div>
+    <a class="btn btn-fintech-outline mb-2" href="{{ url_for('decisiones.index', cliente=cliente.id) }}">
+      <i class="fa-solid fa-clock-rotate-left me-1"></i>Historial de decisiones
+    </a>
     {% if cliente.nivel_riesgo == 'BAJO' %}
       <span class="badge-risk badge-risk-low fs-6 py-2 px-3">● Riesgo Bajo SBS (Score: {{ cliente.score_interno }}/100)</span>
     {% elif cliente.nivel_riesgo == 'MEDIO' %}
@@ -148,6 +151,18 @@
 
     <!-- PANEL PAGOS -->
     <div class="tab-pane fade" id="pagos-panel">
+      <h6 class="fw-bold mb-3">Abonos realmente registrados</h6>
+      <div class="table-responsive mb-4">
+        <table class="table-fintech">
+          <thead><tr><th>Fecha</th><th>Cuota</th><th>Monto recibido</th><th>Método</th><th>Promesa asociada</th></tr></thead>
+          <tbody>
+            {% for transaction in transacciones_pago %}
+            <tr><td>{{ transaction.fecha_pago }}</td><td>{{ transaction.numero_cuota }} / {{ transaction.total_cuotas }}</td><td>S/. {{ "{:,.2f}".format(transaction.monto) }}</td><td>{{ transaction.metodo_pago }}</td><td>{{ transaction.promesa_id or '—' }}</td></tr>
+            {% else %}<tr><td colspan="5" class="text-muted">No hay transacciones de pago registradas.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h6 class="fw-bold mb-3">Cronograma de cuotas</h6>
       <div class="table-responsive">
         <table class="table-fintech">
           <thead>

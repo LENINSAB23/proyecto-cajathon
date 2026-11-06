@@ -20,6 +20,8 @@ class Config:
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
     # Modo Demostración IA (se activa automáticamente si no hay API key o si se fuerza)
     DEMO_MODE = os.getenv("DEMO_MODE", "True" if ENV != "production" else "False").lower() in ("true", "1", "yes")
@@ -37,9 +39,21 @@ class Config:
     TASA_INTERES_MENSUAL_REF = float(os.getenv("TASA_INTERES_MENSUAL_REF", "0.028")) # 2.8% mensual (TEA ~39%)
     DTI_UMBRAL_BAJO = float(os.getenv("DTI_UMBRAL_BAJO", "35.0")) # < 35% Bajo Riesgo
     DTI_UMBRAL_MEDIO = float(os.getenv("DTI_UMBRAL_MEDIO", "50.0")) # 35% - 50% Riesgo Medio
+    HEALTH_MORA_WARNING = float(os.getenv("HEALTH_MORA_WARNING", "5.0"))
+    HEALTH_MORA_CRITICAL = float(os.getenv("HEALTH_MORA_CRITICAL", "10.0"))
+    GEO_MORA_MEDIUM = float(os.getenv("GEO_MORA_MEDIUM", "8.0"))
+    GEO_MORA_HIGH = float(os.getenv("GEO_MORA_HIGH", "20.0"))
 
     @classmethod
     def validate(cls):
+        if not (0 <= cls.HEALTH_MORA_WARNING < cls.HEALTH_MORA_CRITICAL <= 100):
+            raise RuntimeError(
+                "Los umbrales de morosidad deben cumplir 0 <= advertencia < crítico <= 100."
+            )
+        if not (0 <= cls.GEO_MORA_MEDIUM < cls.GEO_MORA_HIGH <= 100):
+            raise RuntimeError(
+                "Los umbrales de morosidad geográfica deben cumplir 0 <= medio < alto <= 100."
+            )
         if cls.ENV == "production":
             if not os.getenv("SECRET_KEY"):
                 raise RuntimeError("SECRET_KEY es obligatorio en producción.")

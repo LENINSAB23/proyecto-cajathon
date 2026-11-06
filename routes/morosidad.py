@@ -1,7 +1,8 @@
 from datetime import date, datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+import math
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.auth import login_required, role_required
-from database.db import new_id, query_db, execute_db
+from database.db import new_id, query_db, execute_db, execute_transaction
 from services.credit_scoring import clasificar_dias_mora_sbs
 
 morosidad_bp = Blueprint('morosidad', __name__, url_prefix='/morosidad')
@@ -10,11 +11,20 @@ morosidad_bp = Blueprint('morosidad', __name__, url_prefix='/morosidad')
 @login_required
 @role_required('Administrador', 'Personal de cobranza')
 def index():
+    from routes.promesas import _refresh_statuses
+    _refresh_statuses()
+
     estado_filtro = request.args.get('estado', '').strip()
     nivel_filtro = request.args.get('clasificacion', '').strip()
 
     sql = """
-        SELECT p.*, c.nombres, c.apellidos, c.dni, c.codigo_cliente, c.telefono, c.ocupacion,
+        SELECT p.*,
+               CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) > 0 THEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) ELSE 0 END AS saldo_pendiente,
+               c.nombres, c.apellidos, c.dni, c.codigo_cliente, c.telefono, c.ocupacion,
                s.numero_solicitud, s.tipo_credito
         FROM pagos p
         JOIN clientes c ON p.cliente_id = c.id
@@ -38,13 +48,24 @@ def index():
     total_cartera = query_db("SELECT COUNT(*) as cnt FROM pagos", one=True)['cnt']
     cuotas_en_mora = query_db("SELECT COUNT(*) as cnt FROM pagos WHERE estado_pago = 'EN_MORA'", one=True)['cnt']
     mora_critica = query_db("SELECT COUNT(*) as cnt FROM pagos WHERE dias_atraso > 30", one=True)['cnt']
-    monto_vencido = query_db("SELECT SUM(monto_cuota + penalidad) as sum_mora FROM pagos WHERE estado_pago IN ('EN_MORA', 'VENCIDO')", one=True)['sum_mora'] or 0.0
+    monto_vencido = query_db("""
+        SELECT SUM(CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
+            (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+        ) > 0 THEN p.monto_cuota + p.penalidad - COALESCE(
+            (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+        ) ELSE 0 END) AS sum_mora
+        FROM pagos p WHERE p.estado_pago IN ('EN_MORA', 'VENCIDO')
+    """, one=True)['sum_mora'] or 0.0
 
     # Cartera en riesgo (clientes en mora)
     clientes_en_mora = query_db("""
         SELECT DISTINCT c.id, c.codigo_cliente, c.nombres, c.apellidos, c.dni, c.telefono,
                MAX(p.dias_atraso) as max_dias, COUNT(p.id) as cuotas_impagas,
-               SUM(p.monto_cuota) as deuda_vencida
+               SUM(CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) > 0 THEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) ELSE 0 END) as deuda_vencida
         FROM pagos p
         JOIN clientes c ON p.cliente_id = c.id
         WHERE p.estado_pago IN ('EN_MORA', 'VENCIDO')
@@ -61,6 +82,11 @@ def index():
         ORDER BY a.created_at DESC
         LIMIT 6
     """)
+    promesas_activas = query_db("""
+        SELECT id, cliente_id, monto_comprometido, fecha_prometida
+        FROM promesas_pago WHERE estado IN ('PENDIENTE', 'VENCIDA', 'INCUMPLIDA')
+        ORDER BY fecha_prometida
+    """)
 
     kpis_mora = {
         'total_cartera': total_cartera,
@@ -76,6 +102,7 @@ def index():
         kpis_mora=kpis_mora,
         clientes_en_mora=clientes_en_mora,
         alertas=alertas_morosidad,
+        promesas_activas=promesas_activas,
         estado_filtro=estado_filtro,
         nivel_filtro=nivel_filtro
     )
@@ -85,32 +112,72 @@ def index():
 @role_required('Administrador', 'Personal de cobranza')
 def registrar_pago(pago_id):
     """Registra la cancelación de una cuota vencida o pendiente."""
-    metodo = request.form.get('metodo_pago', 'Ventanilla Caja')
+    metodo = request.form.get('metodo_pago', 'Ventanilla Caja').strip()
     fecha_pago = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    promesa_id = request.form.get("promesa_id", "").strip() or None
 
     pago = query_db("SELECT * FROM pagos WHERE id = ?", (pago_id,), one=True)
     if not pago:
         flash('Registro de pago no encontrado.', 'danger')
         return redirect(url_for('morosidad.index'))
 
+    already_paid = query_db(
+        "SELECT COALESCE(SUM(monto), 0) AS total FROM transacciones_pago WHERE cuota_id = ?",
+        (pago_id,), one=True
+    )["total"]
+    total_due = float(pago["monto_cuota"]) + float(pago["penalidad"] or 0)
+    remaining = max(0.0, total_due - float(already_paid or 0))
+    try:
+        amount = float(request.form.get("monto_pagado", remaining))
+    except (TypeError, ValueError):
+        amount = 0
+    if not math.isfinite(amount) or amount <= 0 or amount > remaining + 0.0001 or not metodo or len(metodo) > 80:
+        flash(f'El abono debe ser positivo y no exceder el saldo de S/. {remaining:,.2f}.', 'danger')
+        return redirect(url_for('morosidad.index'))
+
+    promise = None
+    if promesa_id:
+        promise = query_db(
+            "SELECT id, cliente_id, estado FROM promesas_pago WHERE id = ?",
+            (promesa_id,), one=True
+        )
+        if not promise or promise["cliente_id"] != pago["cliente_id"] or promise["estado"] not in ("PENDIENTE", "VENCIDA", "INCUMPLIDA"):
+            flash("La promesa seleccionada no corresponde al cliente o ya está cerrada.", "danger")
+            return redirect(url_for('morosidad.index'))
+
     fecha_vencimiento = pago['fecha_vencimiento']
     if not isinstance(fecha_vencimiento, date):
-        fecha_vencimiento = date.fromisoformat(fecha_vencimiento[:10])
+        fecha_vencimiento = date.fromisoformat(str(fecha_vencimiento)[:10])
     dias_atraso = max(0, (datetime.now().date() - fecha_vencimiento).days)
     clasificacion = clasificar_dias_mora_sbs(dias_atraso)['categoria']
+    fully_paid = float(already_paid or 0) + amount + 0.0001 >= total_due
 
-    execute_db("""
+    execute_transaction([
+        ("""
+        INSERT INTO transacciones_pago (
+            id, cuota_id, solicitud_id, cliente_id, promesa_id, monto,
+            metodo_pago, registrado_por, fecha_pago
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            new_id("txn"), pago["id"], pago["solicitud_id"], pago["cliente_id"],
+            promesa_id, amount, metodo, session.get("user_id"), fecha_pago,
+        )),
+        ("""
         UPDATE pagos SET
-            estado_pago = 'PAGADO',
+            estado_pago = ?,
             fecha_pago = ?,
             metodo_pago = ?,
             dias_atraso = ?,
             clasificacion_sbs = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (fecha_pago, metodo, dias_atraso, clasificacion, pago_id))
+        """, (
+            'PAGADO' if fully_paid else ('EN_MORA' if dias_atraso > 0 else pago["estado_pago"]),
+            fecha_pago, metodo, dias_atraso, clasificacion, pago_id,
+        )),
+    ])
 
-    flash(f'Pago de cuota N° {pago["numero_cuota"]} por S/. {pago["monto_cuota"]:,.2f} registrado exitosamente.', 'success')
+    flash(f'Abono de S/. {amount:,.2f} registrado exitosamente.', 'success')
     return redirect(url_for('morosidad.index'))
 
 @morosidad_bp.route('/crear-alerta-preventiva', methods=['POST'])

@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block title %}Historial de promesas{% endblock %}
+{% block content %}<div class="content-header"><div><h2 class="content-title">Historial de promesas del cliente</h2><div class="content-subtitle">Identificador de cliente: {{ cliente_id }}</div></div><a href="{{ url_for('promesas.index') }}" class="btn btn-fintech-outline">Volver</a></div>
+<div class="custom-card table-responsive"><table class="table-fintech"><thead><tr><th>Fecha promesa</th><th>Monto</th><th>Pagado</th><th>Estado</th><th>Observaciones</th><th>Responsable</th></tr></thead><tbody>{% for item in promises %}<tr><td>{{ item.fecha_prometida }}</td><td>S/ {{ "{:,.2f}".format(item.monto_comprometido) }}</td><td>S/ {{ "{:,.2f}".format(item.monto_pagado) }}</td><td>{{ item.estado }}</td><td>{{ item.observaciones or '—' }}</td><td>{{ item.responsable_nombre }}</td></tr>{% else %}<tr><td colspan="6">Sin historial registrado.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

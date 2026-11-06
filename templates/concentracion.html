@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Concentración geográfica{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>#riskMap{height:430px;border-radius:12px}.zone-dot{display:inline-block;width:10px;height:10px;border-radius:50%}</style>
+{% endblock %}
+{% block content %}
+<div class="content-header"><div><h2 class="content-title">Mapa geográfico de concentración de riesgos</h2><div class="content-subtitle">Agregados por departamento, provincia y distrito; sin geocodificación ni coordenadas inventadas.</div></div></div>
+<div class="alert alert-info">Los clientes sin coordenadas no se dibujan en el mapa. Los marcadores requieren al menos {{ map_min_clients }} clientes con coordenadas registradas; los grupos menores se suprimen. Riesgo medio ≥ {{ medium_threshold }}% de mora; alto ≥ {{ high_threshold }}%.</div>
+<div class="custom-card p-3 mb-4">
+  <form class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="desde" value="{{ start_date }}"></div>
+    <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="hasta" value="{{ end_date }}"></div>
+    <div class="col-md-2"><label class="form-label">Riesgo</label><select class="form-select" name="riesgo"><option value="">Todos</option>{% for level in ['BAJO','MEDIO','ALTO'] %}<option value="{{ level }}" {% if risk == level %}selected{% endif %}>{{ level }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label">Estado del crédito</label><select class="form-select" name="estado"><option value="">Todos</option>{% for item in ['PENDIENTE','EVALUADO','APROBADO','RECHAZADO','OBSERVADO'] %}<option value="{{ item }}" {% if state == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><button class="btn btn-fintech-primary w-100">Aplicar filtros</button></div>
+  </form>
+</div>
+<div class="custom-card p-3 mb-4"><h5 class="card-header-title mb-3">Mapa por coordenadas registradas</h5><div id="riskMap"></div></div>
+<div class="custom-card p-3 mb-4"><h5 class="card-header-title">Comparación por ubicación</h5><canvas id="concentrationChart" height="100"></canvas></div>
+<div class="custom-card table-responsive"><table class="table-fintech"><thead><tr><th>Ubicación</th><th>Clientes</th><th>Créditos</th><th>Monto solicitudes</th><th>Riesgo alto</th><th>Morosos</th><th>Mora</th><th>Cartera pendiente</th><th>Exposición vencida</th><th>Zona</th></tr></thead><tbody>
+{% for zone in zonas %}<tr><td>{{ zone.departamento }}{% if zone.provincia %} / {{ zone.provincia }}{% endif %}{% if zone.distrito %} / {{ zone.distrito }}{% endif %}</td><td>{{ zone.clientes }}</td><td>{{ zone.creditos }}</td><td>S/ {{ "{:,.2f}".format(zone.monto_creditos) }}</td><td>{{ zone.clientes_riesgo_alto }}</td><td>{{ zone.morosos }}</td><td>{{ zone.porcentaje_mora }}%</td><td>S/ {{ "{:,.2f}".format(zone.exposicion_cartera) }}</td><td>S/ {{ "{:,.2f}".format(zone.exposicion_vencida) }}</td><td><span class="badge {% if zone.riesgo_zona == 'ALTO' %}bg-danger{% elif zone.riesgo_zona == 'MEDIO' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ zone.riesgo_zona }}</span></td></tr>
+{% else %}<tr><td colspan="10" class="text-center py-4">Sin datos para los filtros seleccionados.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+  const zones = {{ mapped_zones|tojson }};
+  const map = L.map('riskMap').setView([-9.19, -75.02], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 18, attribution: '&copy; OpenStreetMap'}).addTo(map);
+  const colors = {BAJO:'#198754', MEDIO:'#ffc107', ALTO:'#dc3545'};
+  const markers = [];
+  zones.forEach(zone => {
+    const marker = L.circleMarker([zone.latitud, zone.longitud], {radius: 10, color: colors[zone.riesgo_zona], fillOpacity: .7}).addTo(map);
+    const popup = document.createElement('div');
+    const heading = document.createElement('strong');
+    heading.textContent = [zone.departamento, zone.provincia, zone.distrito].filter(Boolean).join(' / ');
+    popup.appendChild(heading);
+    [    ['Clientes', zone.clientes], ['Morosos', `${zone.morosos} (${zone.porcentaje_mora}%)`], ['Cartera pendiente', `S/ ${zone.exposicion_cartera.toFixed(2)}`], ['Exposición vencida', `S/ ${zone.exposicion_vencida.toFixed(2)}`]].forEach(([label, value]) => {
+      const line = document.createElement('div');
+      line.textContent = `${label}: ${value}`;
+      popup.appendChild(line);
+    });
+    marker.bindPopup(popup);
+    markers.push(marker);
+  });
+  if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds().pad(.15));
+  const chartZones = {{ zonas[:12]|tojson }};
+  new Chart(document.getElementById('concentrationChart'), {type:'bar', data:{labels:chartZones.map(z=>z.departamento+(z.distrito?' / '+z.distrito:'')), datasets:[{label:'Morosos',data:chartZones.map(z=>z.morosos),backgroundColor:'#dc3545'},{label:'Clientes',data:chartZones.map(z=>z.clientes),backgroundColor:'#164e80'}]}, options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+})();
+</script>
+{% endblock %}

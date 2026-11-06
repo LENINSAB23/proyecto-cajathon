@@ -174,6 +174,27 @@
                       <label class="form-label-fintech">Dirección Domiciliaria / Negocio</label>
                       <input type="text" name="direccion" class="form-control form-control-fintech" value="{{ cli.direccion }}">
                     </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Departamento</label>
+                      <input type="text" name="departamento" class="form-control form-control-fintech" value="{{ cli.departamento or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Provincia</label>
+                      <input type="text" name="provincia" class="form-control form-control-fintech" value="{{ cli.provincia or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label-fintech">Distrito</label>
+                      <input type="text" name="distrito" class="form-control form-control-fintech" value="{{ cli.distrito or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Latitud (opcional)</label>
+                      <input type="number" step="0.000001" min="-18.5" max="0" name="latitud" class="form-control form-control-fintech" value="{{ cli.latitud or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label-fintech">Longitud (opcional)</label>
+                      <input type="number" step="0.000001" min="-82" max="-68" name="longitud" class="form-control form-control-fintech" value="{{ cli.longitud or '' }}">
+                    </div>
+                    <div class="col-12 small text-muted">Las coordenadas se registran manualmente y nunca se generan. El mapa solo muestra agregados con al menos cinco clientes.</div>
                   </div>
                 </div>
                 <div class="modal-footer">
@@ -268,8 +289,25 @@
             </div>
             <div class="col-md-4">
               <label class="form-label-fintech">Departamento / Región</label>
-              <input type="text" name="departamento" class="form-control form-control-fintech" value="Lima">
+              <input type="text" name="departamento" class="form-control form-control-fintech">
             </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Provincia</label>
+              <input type="text" name="provincia" class="form-control form-control-fintech">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-fintech">Distrito</label>
+              <input type="text" name="distrito" class="form-control form-control-fintech">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-fintech">Latitud (opcional)</label>
+              <input type="number" step="0.000001" min="-18.5" max="0" name="latitud" class="form-control form-control-fintech">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-fintech">Longitud (opcional)</label>
+              <input type="number" step="0.000001" min="-82" max="-68" name="longitud" class="form-control form-control-fintech">
+            </div>
+            <div class="col-12 small text-muted">Las coordenadas son opcionales; no se geocodifica ni inventa la ubicación. Los puntos del mapa solo aparecen como agregados de al menos cinco clientes.</div>
             
             <div class="col-12 mt-3">
               <h6 class="fw-bold text-navy border-bottom pb-2">Información Financiera Declarada</h6>

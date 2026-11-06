@@ -5,6 +5,21 @@ from services.credit_scoring import calcular_scoring_analitico
 
 clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
 
+def _geographic_fields():
+    department = request.form.get('departamento', '').strip() or None
+    province = request.form.get('provincia', '').strip() or None
+    district = request.form.get('distrito', '').strip() or None
+    raw_latitude = request.form.get('latitud', '').strip()
+    raw_longitude = request.form.get('longitud', '').strip()
+    if bool(raw_latitude) != bool(raw_longitude):
+        raise ValueError("Ingrese ambas coordenadas o deje ambas vacías.")
+    if not raw_latitude:
+        return department, province, district, None, None
+    latitude, longitude = float(raw_latitude), float(raw_longitude)
+    if not (-18.5 <= latitude <= 0 and -82 <= longitude <= -68):
+        raise ValueError("Las coordenadas deben corresponder al rango geográfico del Perú.")
+    return department, province, district, latitude, longitude
+
 @clientes_bp.route('/')
 @login_required
 @role_required('Administrador', 'Analista de créditos')
@@ -46,7 +61,7 @@ def crear():
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip()
         direccion = request.form.get('direccion', '').strip()
-        departamento = request.form.get('departamento', 'Lima').strip()
+        departamento, provincia, distrito, latitud, longitud = _geographic_fields()
 
         # Validaciones
         if not (nombres and apellidos and dni and len(dni) == 8 and dni.isdigit()):
@@ -78,11 +93,12 @@ def crear():
                 id, codigo_cliente, nombres, apellidos, dni, edad, ocupacion, 
                 sector_economico, ingresos_mensuales, gastos_mensuales, deudas_actuales, 
                 score_interno, nivel_riesgo, telefono, email, direccion, departamento
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                , provincia, distrito, latitud, longitud
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             cliente_id, codigo_cliente, nombres, apellidos, dni, edad, ocupacion,
             sector, ingresos, gastos, deudas, scoring['score_riesgo'], scoring['nivel_riesgo'],
-            telefono, email, direccion, departamento
+            telefono, email, direccion, departamento, provincia, distrito, latitud, longitud
         ))
 
         flash(f'Cliente {nombres} {apellidos} ({codigo_cliente}) registrado exitosamente.', 'success')
@@ -104,6 +120,13 @@ def detalle(id):
     solicitudes = query_db("SELECT * FROM solicitudes_credito WHERE cliente_id = ? ORDER BY created_at DESC", (id,))
     # Historial de pagos
     pagos = query_db("SELECT * FROM pagos WHERE cliente_id = ? ORDER BY fecha_vencimiento DESC", (id,))
+    transacciones_pago = query_db("""
+        SELECT t.*, p.numero_cuota, p.total_cuotas
+        FROM transacciones_pago t
+        JOIN pagos p ON p.id = t.cuota_id
+        WHERE t.cliente_id = ?
+        ORDER BY t.fecha_pago DESC
+    """, (id,))
     # Historial crediticio en otras entidades
     historial = query_db("SELECT * FROM historial_crediticio WHERE cliente_id = ? ORDER BY created_at DESC", (id,))
     # Alertas asociadas
@@ -114,6 +137,7 @@ def detalle(id):
         cliente=cliente,
         solicitudes=solicitudes,
         pagos=pagos,
+        transacciones_pago=transacciones_pago,
         historial=historial,
         alertas=alertas
     )
@@ -134,7 +158,7 @@ def editar(id):
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip()
         direccion = request.form.get('direccion', '').strip()
-        departamento = request.form.get('departamento', 'Lima').strip()
+        departamento, provincia, distrito, latitud, longitud = _geographic_fields()
 
         # Recalcular score preliminar
         scoring = calcular_scoring_analitico({
@@ -150,12 +174,13 @@ def editar(id):
                 nombres = ?, apellidos = ?, edad = ?, ocupacion = ?, sector_economico = ?,
                 ingresos_mensuales = ?, gastos_mensuales = ?, deudas_actuales = ?,
                 score_interno = ?, nivel_riesgo = ?, telefono = ?, email = ?,
-                direccion = ?, departamento = ?, updated_at = CURRENT_TIMESTAMP
+                direccion = ?, departamento = ?, provincia = ?, distrito = ?,
+                latitud = ?, longitud = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (
             nombres, apellidos, edad, ocupacion, sector,
             ingresos, gastos, deudas, scoring['score_riesgo'], scoring['nivel_riesgo'],
-            telefono, email, direccion, departamento, id
+            telefono, email, direccion, departamento, provincia, distrito, latitud, longitud, id
         ))
 
         flash('Información del cliente actualizada correctamente.', 'success')
@@ -170,6 +195,22 @@ def editar(id):
 def eliminar(id):
     cliente = query_db("SELECT nombres, apellidos FROM clientes WHERE id = ?", (id,), one=True)
     if cliente:
+        retained_records = query_db(
+            """SELECT id FROM historial_decisiones WHERE cliente_id = ?
+               UNION ALL
+               SELECT id FROM transacciones_pago WHERE cliente_id = ?
+               UNION ALL
+               SELECT id FROM promesas_pago WHERE cliente_id = ?
+               LIMIT 1""",
+            (id, id, id), one=True
+        )
+        if retained_records:
+            flash(
+                'No se puede eliminar el cliente porque tiene decisiones auditables o pagos registrados. '
+                'Los registros financieros deben conservarse.',
+                'warning'
+            )
+            return redirect(url_for('clientes.index'))
         execute_db("DELETE FROM clientes WHERE id = ?", (id,))
         flash(f'El cliente {cliente["nombres"]} {cliente["apellidos"]} ha sido eliminado del sistema.', 'info')
     else:

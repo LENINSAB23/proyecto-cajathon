@@ -23,3 +23,15 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: HEALTH_MORA_WARNING
+        value: "5.0"
+      - key: HEALTH_MORA_CRITICAL
+        value: "10.0"
+      - key: GEO_MORA_MEDIUM
+        value: "8.0"
+      - key: GEO_MORA_HIGH
+        value: "20.0"

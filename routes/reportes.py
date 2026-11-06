@@ -90,14 +90,25 @@ def obtener_datos_reporte(tipo: str):
 
     elif tipo == 'morosidad':
         monto_total_vencido = query_db(
-            "SELECT SUM(monto_cuota + penalidad) as s FROM pagos WHERE estado_pago IN ('EN_MORA', 'VENCIDO')",
+            """SELECT SUM(CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) > 0 THEN p.monto_cuota + p.penalidad - COALESCE(
+                   (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+               ) ELSE 0 END) AS s
+               FROM pagos p WHERE p.estado_pago IN ('EN_MORA', 'VENCIDO')""",
             one=True
         )['s'] or 0
         sql = """
             SELECT p.fecha_vencimiento, s.numero_solicitud, c.codigo_cliente,
                    c.nombres || ' ' || c.apellidos as cliente, c.telefono,
                    p.numero_cuota || '/' || p.total_cuotas as cuota,
-                   p.monto_cuota, p.dias_atraso, p.clasificacion_sbs,
+                   p.monto_cuota,
+                   CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
+                       (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+                   ) > 0 THEN p.monto_cuota + p.penalidad - COALESCE(
+                       (SELECT SUM(tp.monto) FROM transacciones_pago tp WHERE tp.cuota_id = p.id), 0
+                   ) ELSE 0 END AS saldo_pendiente,
+                   p.dias_atraso, p.clasificacion_sbs,
                    p.penalidad, p.estado_pago
             FROM pagos p
             JOIN clientes c ON p.cliente_id = c.id

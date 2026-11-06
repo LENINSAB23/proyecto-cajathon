@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from flask import Flask, current_app, jsonify, render_template, session
 from config import Config
 from database.db import init_db, query_db
@@ -9,6 +10,10 @@ from routes.creditos import creditos_bp
 from routes.riesgos import riesgos_bp
 from routes.morosidad import morosidad_bp
 from routes.reportes import reportes_bp
+from routes.geografia import geografia_bp
+from routes.decisiones import decisiones_bp
+from routes.salud import salud_bp
+from routes.promesas import promesas_bp
 
 def create_app():
     app = Flask(__name__)
@@ -31,6 +36,10 @@ def create_app():
     app.register_blueprint(riesgos_bp)
     app.register_blueprint(morosidad_bp)
     app.register_blueprint(reportes_bp)
+    app.register_blueprint(geografia_bp)
+    app.register_blueprint(decisiones_bp)
+    app.register_blueprint(salud_bp)
+    app.register_blueprint(promesas_bp)
 
     @app.get('/health')
     def health():
@@ -57,7 +66,8 @@ def create_app():
                 'agencia': session.get('user_agencia', 'Sede Central'),
                 'avatar': session.get('user_avatar')
             },
-            'alertas_pendientes_count': alertas_no_leidas
+            'alertas_pendientes_count': alertas_no_leidas,
+            'today': date.today().isoformat(),
         }
 
     # Manejo elegante de errores

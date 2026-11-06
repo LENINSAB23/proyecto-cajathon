@@ -85,6 +85,25 @@
         <i class="fa-solid fa-file-lines"></i>
         <span>Reportes Financieros</span>
       </a>
+      <a href="{{ url_for('salud.index') }}" class="sidebar-link {% if 'salud' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-heart-pulse"></i><span>Salud financiera</span>
+      </a>
+      {% endif %}
+
+      {% if current_user.rol in ['Administrador', 'Analista de créditos'] %}
+      <a href="{{ url_for('decisiones.index') }}" class="sidebar-link {% if 'decisiones' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-clock-rotate-left"></i><span>Historial de decisiones</span>
+      </a>
+      {% endif %}
+      {% if current_user.rol in ['Administrador', 'Analista de créditos', 'Personal de cobranza'] %}
+      <a href="{{ url_for('geografia.index') }}" class="sidebar-link {% if 'geografia' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-map-location-dot"></i><span>Concentración geográfica</span>
+      </a>
+      {% endif %}
+      {% if current_user.rol in ['Administrador', 'Personal de cobranza'] %}
+      <a href="{{ url_for('promesas.index') }}" class="sidebar-link {% if 'promesas' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-handshake"></i><span>Promesas de pago</span>
+      </a>
       {% endif %}
     </div>
 

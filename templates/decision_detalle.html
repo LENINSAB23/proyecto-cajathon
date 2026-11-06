@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Fotografía de auditoría{% endblock %}
+{% block content %}
+<div class="content-header"><div><h2 class="content-title">Fotografía inmutable de auditoría</h2><div class="content-subtitle">{{ decision.tipo_evento }} · {{ decision.created_at }} · {{ decision.actor_nombre }}</div></div><a class="btn btn-fintech-outline" href="{{ url_for('decisiones.index') }}">Volver al historial</a></div>
+<div class="custom-card p-4 mb-4"><dl class="row">
+<dt class="col-sm-3">Solicitud</dt><dd class="col-sm-9">{{ decision.solicitud_id }}</dd><dt class="col-sm-3">Decisión/estado</dt><dd class="col-sm-9">{{ decision.estado_decision }}</dd><dt class="col-sm-3">Riesgo y score</dt><dd class="col-sm-9">{{ decision.nivel_riesgo or '—' }} / {{ decision.score_riesgo if decision.score_riesgo is not none else '—' }}</dd><dt class="col-sm-3">Observaciones</dt><dd class="col-sm-9">{{ decision.observaciones or '—' }}</dd></dl>
+<h5>Datos y resultados conservados</h5><pre class="bg-light p-3 rounded text-wrap">{{ decision.snapshot|tojson(indent=2) }}</pre></div>
+{% if current_user.rol == 'Administrador' %}<div class="custom-card p-4"><h5>Anexar observación administrativa</h5><form method="post" action="{{ url_for('decisiones.add_observation', solicitud_id=decision.solicitud_id) }}"><textarea class="form-control mb-3" name="observaciones" maxlength="4000" required></textarea><button class="btn btn-fintech-primary">Guardar como nuevo evento</button></form></div>{% endif %}
+{% endblock %}

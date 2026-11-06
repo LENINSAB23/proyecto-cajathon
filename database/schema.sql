@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS clientes (
     email VARCHAR(150),
     direccion VARCHAR(255),
     departamento VARCHAR(100) DEFAULT 'Lima',
+    provincia VARCHAR(100),
+    distrito VARCHAR(100),
+    latitud NUMERIC(9, 6) CHECK (latitud IS NULL OR latitud BETWEEN -18.5 AND 0),
+    longitud NUMERIC(9, 6) CHECK (longitud IS NULL OR longitud BETWEEN -82 AND -68),
     activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -90,10 +94,15 @@ CREATE TABLE IF NOT EXISTS solicitudes_credito (
     ingreso_disponible NUMERIC(12, 2) NOT NULL,
     estado VARCHAR(30) DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'EVALUADO', 'APROBADO', 'RECHAZADO', 'OBSERVADO')),
     motivo_rechazo TEXT,
+    monto_desembolsado NUMERIC(12, 2) CHECK (monto_desembolsado IS NULL OR monto_desembolsado >= 0),
+    fecha_desembolso DATE,
     fecha_solicitud TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE solicitudes_credito ADD COLUMN IF NOT EXISTS monto_desembolsado NUMERIC(12, 2);
+ALTER TABLE solicitudes_credito ADD COLUMN IF NOT EXISTS fecha_desembolso DATE;
 
 -- ----------------------------------------------------------------------------
 -- 4. TABLA: evaluaciones_riesgo
@@ -118,6 +127,11 @@ CREATE TABLE IF NOT EXISTS evaluaciones_riesgo (
     evaluado_por VARCHAR(150),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(100);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS distrito VARCHAR(100);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS latitud NUMERIC(9, 6);
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS longitud NUMERIC(9, 6);
 
 -- ----------------------------------------------------------------------------
 -- 5. TABLA: pagos
@@ -173,6 +187,68 @@ CREATE TABLE IF NOT EXISTS historial_crediticio (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Auditoría append-only: cada fila conserva los datos y resultados utilizados.
+CREATE TABLE IF NOT EXISTS historial_decisiones (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    solicitud_id UUID NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
+    cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
+    actor_id TEXT NOT NULL,
+    actor_nombre VARCHAR(150) NOT NULL,
+    tipo_evento VARCHAR(40) NOT NULL,
+    estado_decision VARCHAR(40),
+    nivel_riesgo VARCHAR(20),
+    score_riesgo INTEGER,
+    observaciones TEXT,
+    snapshot_json TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION impedir_cambio_historial_decisiones()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'historial_decisiones es de solo anexado';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS historial_decisiones_inmutable ON historial_decisiones;
+CREATE TRIGGER historial_decisiones_inmutable
+BEFORE UPDATE OR DELETE ON historial_decisiones
+FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historial_decisiones();
+
+CREATE TABLE IF NOT EXISTS promesas_pago (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
+    monto_comprometido NUMERIC(12, 2) NOT NULL CHECK (monto_comprometido > 0),
+    fecha_prometida DATE NOT NULL,
+    observaciones TEXT,
+    responsable_id TEXT NOT NULL,
+    responsable_nombre VARCHAR(150) NOT NULL,
+    registrado_por TEXT NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
+        CHECK (estado IN ('PENDIENTE', 'VENCIDA', 'CUMPLIDA', 'INCUMPLIDA')),
+    alerta_proxima_enviada BOOLEAN NOT NULL DEFAULT FALSE,
+    alerta_incumplimiento_enviada BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS transacciones_pago (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    cuota_id UUID NOT NULL REFERENCES pagos(id) ON DELETE RESTRICT,
+    solicitud_id UUID NOT NULL REFERENCES solicitudes_credito(id) ON DELETE RESTRICT,
+    cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
+    promesa_id UUID REFERENCES promesas_pago(id) ON DELETE RESTRICT,
+    monto NUMERIC(12, 2) NOT NULL CHECK (monto > 0),
+    metodo_pago VARCHAR(80) NOT NULL,
+    registrado_por TEXT NOT NULL,
+    fecha_pago TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS telegram_notifications (
+    event_key TEXT PRIMARY KEY,
+    sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ----------------------------------------------------------------------------
 -- ÍNDICES PARA ALTO RENDIMIENTO
 -- ----------------------------------------------------------------------------
@@ -191,6 +267,13 @@ CREATE INDEX IF NOT EXISTS idx_pagos_vencimiento ON pagos(fecha_vencimiento);
 CREATE INDEX IF NOT EXISTS idx_alertas_severidad ON alertas(severidad);
 CREATE INDEX IF NOT EXISTS idx_alertas_leido ON alertas(leido);
 CREATE INDEX IF NOT EXISTS idx_historial_cliente ON historial_crediticio(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_historial_decisiones_fecha ON historial_decisiones(created_at);
+CREATE INDEX IF NOT EXISTS idx_historial_decisiones_cliente ON historial_decisiones(cliente_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_historial_decisiones_actor ON historial_decisiones(actor_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_promesas_estado_fecha ON promesas_pago(estado, fecha_prometida);
+CREATE INDEX IF NOT EXISTS idx_promesas_cliente_fecha ON promesas_pago(cliente_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_transacciones_cliente_fecha ON transacciones_pago(cliente_id, fecha_pago);
+CREATE INDEX IF NOT EXISTS idx_transacciones_promesa ON transacciones_pago(promesa_id);
 
 -- ----------------------------------------------------------------------------
 -- TRIGGERS PARA UPDATED_AT AUTOMÁTICO
@@ -233,6 +316,9 @@ ALTER TABLE evaluaciones_riesgo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alertas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_crediticio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE historial_decisiones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE promesas_pago ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transacciones_pago ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.usuario_tiene_rol(roles_permitidos TEXT[])
 RETURNS BOOLEAN
@@ -254,7 +340,8 @@ REVOKE ALL ON FUNCTION public.usuario_tiene_rol(TEXT[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.usuario_tiene_rol(TEXT[]) TO authenticated;
 
 REVOKE ALL ON TABLE usuarios, clientes, solicitudes_credito, evaluaciones_riesgo,
-    pagos, alertas, historial_crediticio FROM anon;
+    pagos, alertas, historial_crediticio, historial_decisiones, promesas_pago,
+    transacciones_pago, telegram_notifications FROM anon;
 GRANT SELECT ON TABLE usuarios TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE clientes TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE solicitudes_credito TO authenticated;
@@ -262,6 +349,9 @@ GRANT SELECT, INSERT, UPDATE ON TABLE evaluaciones_riesgo TO authenticated;
 GRANT SELECT, UPDATE ON TABLE pagos TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE alertas TO authenticated;
 GRANT SELECT ON TABLE historial_crediticio TO authenticated;
+GRANT SELECT, INSERT ON TABLE historial_decisiones TO authenticated;
+GRANT SELECT, INSERT ON TABLE promesas_pago TO authenticated;
+GRANT SELECT, INSERT ON TABLE transacciones_pago TO authenticated;
 
 DROP POLICY IF EXISTS "Lectura pública para usuarios autenticados en usuarios" ON usuarios;
 DROP POLICY IF EXISTS "Lectura completa en clientes" ON clientes;
@@ -301,6 +391,12 @@ DROP POLICY IF EXISTS alertas_ver ON alertas;
 DROP POLICY IF EXISTS alertas_crear ON alertas;
 DROP POLICY IF EXISTS alertas_actualizar ON alertas;
 DROP POLICY IF EXISTS historial_ver ON historial_crediticio;
+DROP POLICY IF EXISTS decisiones_ver ON historial_decisiones;
+DROP POLICY IF EXISTS decisiones_crear ON historial_decisiones;
+DROP POLICY IF EXISTS promesas_ver ON promesas_pago;
+DROP POLICY IF EXISTS promesas_crear ON promesas_pago;
+DROP POLICY IF EXISTS transacciones_ver ON transacciones_pago;
+DROP POLICY IF EXISTS transacciones_crear ON transacciones_pago;
 
 CREATE POLICY usuarios_ver_perfil_propio
 ON usuarios FOR SELECT TO authenticated
@@ -364,3 +460,38 @@ WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranz
 CREATE POLICY historial_ver
 ON historial_crediticio FOR SELECT TO authenticated
 USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+
+CREATE POLICY decisiones_ver
+ON historial_decisiones FOR SELECT TO authenticated
+USING (
+    public.usuario_tiene_rol(ARRAY['Administrador'])
+    OR (public.usuario_tiene_rol(ARRAY['Analista de créditos']) AND actor_id = auth.uid()::text)
+);
+CREATE POLICY decisiones_crear
+ON historial_decisiones FOR INSERT TO authenticated
+WITH CHECK (
+    public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos'])
+    AND actor_id = auth.uid()::text
+);
+
+CREATE POLICY promesas_ver
+ON promesas_pago FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']));
+CREATE POLICY promesas_crear
+ON promesas_pago FOR INSERT TO authenticated
+WITH CHECK (
+    public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza'])
+    AND registrado_por = auth.uid()::text
+);
+
+CREATE POLICY transacciones_ver
+ON transacciones_pago FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']));
+CREATE POLICY transacciones_crear
+ON transacciones_pago FOR INSERT TO authenticated
+WITH CHECK (
+    public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza'])
+    AND registrado_por = auth.uid()::text
+);
+
+REVOKE ALL ON TABLE telegram_notifications FROM PUBLIC, anon, authenticated;

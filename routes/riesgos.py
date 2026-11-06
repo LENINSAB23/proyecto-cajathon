@@ -3,6 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from routes.auth import login_required, role_required
 from database.db import new_id, query_db, execute_db
 from services.ia_service import analizar_riesgo_con_ia
+from services.financial_health import record_decision
+from services.telegram_service import notify_telegram
 
 riesgos_bp = Blueprint('riesgos', __name__, url_prefix='/riesgos')
 
@@ -175,6 +177,25 @@ def procesar_ia(solicitud_id):
             resultado['recomendaciones'][:200]
         ))
 
+    evaluation_snapshot = query_db(
+        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
+        (solicitud_id,), one=True
+    )
+    request_snapshot = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = ?",
+        (solicitud_id,), one=True
+    )
+    record_decision(
+        "EVALUACION_IA", request_snapshot, evaluation_snapshot, "EVALUADO",
+        resultado["recomendaciones"], session.get("user_id"), analista_nombre,
+    )
+    if resultado["nivel_riesgo"] == "ALTO":
+        notify_telegram(
+            f"high-risk-credit:{eval_id}:{evaluation_snapshot['created_at']}",
+            f"Evaluación de alto riesgo registrada para la solicitud {solicitud['numero_solicitud']}. "
+            f"Score: {resultado['score_riesgo']}/100. Requiere revisión humana.",
+        )
+
     flash(f'Análisis de Inteligencia Artificial completado con éxito ({resultado["modelo_ia_utilizado"]}). Riesgo asignado: {resultado["nivel_riesgo"]} (Score: {resultado["score_riesgo"]}).', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
 
@@ -191,7 +212,21 @@ def dictamen_humano(solicitud_id):
         'REQUIERE_GARANTIA': 'OBSERVADO',
         'DENEGADO': 'RECHAZADO'
     }
-    nuevo_estado = estado_map.get(decision, 'OBSERVADO')
+    if decision not in estado_map:
+        flash('El dictamen seleccionado no es válido.', 'danger')
+        return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
+    evaluacion = query_db(
+        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
+        (solicitud_id,), one=True
+    )
+    solicitud = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = ?",
+        (solicitud_id,), one=True
+    )
+    if not evaluacion or not solicitud:
+        flash('Debe existir una evaluación antes de registrar un dictamen.', 'warning')
+        return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
+    nuevo_estado = estado_map[decision]
 
     execute_db("""
         UPDATE evaluaciones_riesgo SET
@@ -205,5 +240,17 @@ def dictamen_humano(solicitud_id):
         WHERE id = ?
     """, (nuevo_estado, observaciones if nuevo_estado == 'RECHAZADO' else None, solicitud_id))
 
+    solicitud = query_db(
+        "SELECT * FROM solicitudes_credito WHERE id = ?",
+        (solicitud_id,), one=True
+    )
+    evaluacion = query_db(
+        "SELECT * FROM evaluaciones_riesgo WHERE solicitud_id = ?",
+        (solicitud_id,), one=True
+    )
+    record_decision(
+        "DICTAMEN_HUMANO", solicitud, evaluacion, nuevo_estado, observaciones,
+        session.get("user_id"), session.get("user_name", "Funcionario"),
+    )
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Historial de decisiones{% endblock %}
+{% block content %}
+<div class="content-header"><div><h2 class="content-title">Historial de decisiones crediticias</h2><div class="content-subtitle">Registros append-only con fotografía de la solicitud, datos financieros, evaluación y dictamen.</div></div><div class="d-flex gap-2"><a class="btn btn-fintech-outline" href="{{ url_for('decisiones.export', format_name='excel', desde=filters['desde'], hasta=filters['hasta'], usuario=filters['usuario'], cliente=filters['cliente'], estado=filters['estado']) }}">Excel</a><a class="btn btn-fintech-outline" href="{{ url_for('decisiones.export', format_name='pdf', desde=filters['desde'], hasta=filters['hasta'], usuario=filters['usuario'], cliente=filters['cliente'], estado=filters['estado']) }}">PDF</a></div></div>
+<div class="alert alert-info">El analista consulta solo las decisiones que registró; el administrador puede consultar todo el historial. Las observaciones nuevas se anexan sin sobrescribir eventos previos.</div>
+<div class="custom-card p-3 mb-4"><form class="row g-2 align-items-end">
+<div class="col-md-2"><label class="form-label">Desde</label><input class="form-control" type="date" name="desde" value="{{ filters.desde }}"></div>
+<div class="col-md-2"><label class="form-label">Hasta</label><input class="form-control" type="date" name="hasta" value="{{ filters.hasta }}"></div>
+<div class="col-md-3"><label class="form-label">Usuario</label><select class="form-select" name="usuario"><option value="">Todos</option>{% for item in users %}<option value="{{ item.actor_id }}" {% if filters.usuario == item.actor_id %}selected{% endif %}>{{ item.actor_nombre }}</option>{% endfor %}</select></div>
+<div class="col-md-3"><label class="form-label">Cliente</label><select class="form-select" name="cliente"><option value="">Todos</option>{% for item in clients %}<option value="{{ item.id }}" {% if filters.cliente == item.id %}selected{% endif %}>{{ item.codigo_cliente }} · {{ item.nombres }} {{ item.apellidos }}</option>{% endfor %}</select></div>
+<div class="col-md-2"><label class="form-label">Estado</label><select class="form-select" name="estado"><option value="">Todos</option>{% for item in ['EVALUADO','APROBADO','RECHAZADO','OBSERVADO','DESEMBOLSADO'] %}<option value="{{ item }}" {% if filters.estado == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></div>
+<div class="col-12"><button class="btn btn-fintech-primary">Filtrar</button></div></form></div>
+<div class="custom-card table-responsive"><table class="table-fintech"><thead><tr><th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Evento</th><th>Estado</th><th>Riesgo / score</th><th>Usuario</th><th></th></tr></thead><tbody>
+{% for item in history %}<tr><td>{{ item.created_at }}</td><td>{{ item.numero_solicitud }}</td><td>{{ item.codigo_cliente }} · {{ item.nombres }} {{ item.apellidos }}</td><td>{{ item.tipo_evento }}</td><td>{{ item.estado_decision or '—' }}</td><td>{{ item.nivel_riesgo or '—' }}{% if item.score_riesgo is not none %} / {{ item.score_riesgo }}{% endif %}</td><td>{{ item.actor_nombre }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('decisiones.detail', decision_id=item.id) }}">Ver fotografía</a></td></tr>
+{% else %}<tr><td colspan="8" class="text-center py-4">No hay eventos de decisión para estos filtros.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

@@ -10,10 +10,17 @@ Sistema web de demostración para evaluación de riesgo crediticio y prevención
 - Evaluación de riesgo con OpenAI y motor heurístico de respaldo (sin conexión externa).
 - Gestión de pagos, cuotas atrasadas, alertas preventivas y clasificación SBS.
 - Reportes de evaluaciones, solicitudes, clientes de riesgo alto y morosidad en PDF y Excel.
+- Mapa agregado de cartera con Leaflet/OpenStreetMap; solo traza coordenadas ingresadas y agrega ubicaciones con un mínimo de cinco clientes.
+- Auditoría append-only de evaluaciones, dictámenes, observaciones administrativas y desembolsos, con una instantánea JSON de las entradas financieras y resultados.
+- Salud de cartera basada en desembolsos y abonos efectivamente registrados; exportación PDF/Excel.
+- Seguimiento de promesas, abonos parciales asociados, responsables, vencimientos y alertas.
+- Notificaciones opcionales de Telegram para concentración alta, decisiones de alto riesgo, salud crítica y promesas.
 - Roles separados, validados en las rutas del servidor:
   - **Administrador:** acceso a todos los módulos, eliminación de clientes y reportes.
   - **Analista de créditos:** clientes, solicitudes y evaluaciones; no gestiona cobranzas ni elimina clientes.
   - **Personal de cobranza:** morosidad, registro de pagos, alertas y reporte de morosidad.
+
+Los cuatro nuevos módulos respetan los permisos por rol: mapa agregado para los tres roles, historial para administrador/analista (el analista ve solo sus eventos), salud financiera para administrador, promesas para administrador/cobranzas.
 
 ## Tecnologías
 
@@ -48,7 +55,8 @@ Usa únicamente los datos ficticios incluidos para pruebas y demostración. No p
 La aplicación no cambia a SQLite silenciosamente cuando se configura PostgreSQL. En producción, verifica que las credenciales funcionen y que el esquema esté aplicado.
 
 1. Crea un proyecto en Supabase.
-2. En **SQL Editor**, ejecuta `database/schema.sql`. El esquema crea las siete tablas, índices, claves foráneas, timestamps y políticas RLS; la tabla `usuarios` enlaza cada perfil con el UUID de `auth.users`.
+2. En **SQL Editor**, ejecuta `database/schema.sql`. El esquema crea las tablas de aplicación e índices, claves foráneas, timestamps y políticas RLS; la tabla `usuarios` enlaza cada perfil con el UUID de `auth.users`.
+   El esquema actualizado también agrega campos geográficos opcionales, desembolsos reales, historial de decisiones, promesas y transacciones de pago. Si ya tenías una instancia, vuelve a ejecutar el SQL actualizado para aplicar sus migraciones `ADD COLUMN IF NOT EXISTS` y tablas nuevas. Haz primero un respaldo de producción.
 3. En **Authentication > Users**, crea una cuenta por persona. Para asignarle un rol, copia el UUID de Auth e inserta el perfil asociado en `public.usuarios`:
 
    ```sql
@@ -73,6 +81,9 @@ La aplicación no cambia a SQLite silenciosamente cuando se configura PostgreSQL
    - `DATABASE_URL` con la URI PostgreSQL de Supabase y SSL habilitado. En Render, usa el pooler recomendado por Supabase si la conexión directa no está disponible.
    - `SECRET_KEY` con un valor aleatorio privado.
    - `OPENAI_API_KEY` es opcional; sin ella se usa el motor heurístico.
+   - `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` son opcionales; sin ambos, las notificaciones externas quedan desactivadas.
+   - `HEALTH_MORA_WARNING` y `HEALTH_MORA_CRITICAL` configuran los límites porcentuales de salud (por defecto 5% y 10%; se valida que advertencia < crítico).
+   - `GEO_MORA_MEDIUM` y `GEO_MORA_HIGH` configuran los colores de concentración geográfica (por defecto 8% y 20%).
 5. Inicia la aplicación. Al arrancar, verifica la conexión y que existan todas las tablas requeridas; si falta el esquema, muestra un error de configuración explícito.
 
 El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `DATABASE_URL` y las claves fuera del repositorio. Los permisos de la aplicación también se comprueban en Flask; RLS no sustituye esas validaciones.
@@ -103,10 +114,42 @@ El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `D
 
 ```powershell
 python test_app.py
-python -m compileall -q app.py routes database test_app.py
+python -m compileall -q app.py config.py routes database services scripts test_app.py
 ```
 
-La suite usa la base de datos local ficticia e integra autenticación por rol, módulos, IA de respaldo y exportaciones. Las pruebas no requieren claves de Supabase ni OpenAI.
+La suite usa la base de datos local ficticia e integra autenticación por rol, módulos, IA de respaldo y exportaciones. Las pruebas no requieren claves de Supabase, OpenAI ni Telegram.
+
+## Módulos ampliados y fórmulas
+
+### Concentración geográfica
+
+Ruta `/concentracion/`. Registra departamento, provincia, distrito y, opcionalmente, latitud/longitud en el formulario de clientes. No se usa geocodificación: solo aparecen marcadores creados a partir de coordenadas ingresadas y al menos cinco clientes de la misma zona; los grupos menores se suprimen y el mapa no muestra ubicaciones individuales. OpenStreetMap proporciona las teselas, con atribución visible. Los límites de color de mora por zona son configurables con `GEO_MORA_MEDIUM` (8%) y `GEO_MORA_HIGH` (20%).
+
+### Historial de decisiones
+
+Ruta `/decisiones/`. Cada evaluación de IA, dictamen humano, observación administrativa y desembolso genera un evento nuevo con actor, fecha, score/riesgo, estado, observación e instantánea de entradas financieras/resultados. No se sobrescriben eventos. La tabla usa triggers que rechazan UPDATE/DELETE tanto en SQLite como en PostgreSQL. El analista solo ve eventos propios; el administrador puede consultar todo. Exports admiten PDF y Excel.
+
+### Salud financiera
+
+Ruta `/salud-financiera/` (administrador). Fórmulas:
+
+- **Créditos otorgados** y **monto colocado**: conteo y suma de solicitudes aprobadas con `fecha_desembolso` y `monto_desembolsado` registrados por el administrador; una aprobación por sí sola no prueba un desembolso.
+- **Cartera vigente**: saldo de las cuotas programadas no marcadas pagadas, menos abonos registrados (incluye cuotas vencidas; equivale al saldo de cronograma conocido, no al saldo contable de capital).
+- **Cartera vencida**: saldo de cuota más penalidad, menos abonos registrados, con fecha de vencimiento anterior al día actual.
+- **Morosidad**: cartera vencida / saldo de cuotas no pagadas × 100.
+- **Recuperado**: suma de transacciones de pago efectivamente registradas; los pagos históricos que solo tienen estado `PAGADO` no se convierten en montos recuperados inventados.
+- **Concentración HHI**: suma de los cuadrados de la participación porcentual de la exposición impaga por departamento.
+- **Salud**: verde por debajo del umbral de advertencia; amarillo desde advertencia y por debajo de crítico; rojo desde crítico. Umbrales configurables por entorno.
+
+El sistema muestra **No disponible** para pérdida esperada (falta LGD/exposición al incumplimiento calibrada), liquidez (no existe libro de caja/depósitos) y morosidad histórica mensual (no existen snapshots históricos). La gráfica mensual solo compara desembolsos y pagos registrados. No se presentan estimaciones como observaciones reales.
+
+### Promesas de pago
+
+Ruta `/promesas/`. Cobranzas registra monto, fecha y responsable. En el formulario de pago de cuota se captura el importe realmente recibido y se puede asociar expresamente a una promesa del mismo cliente. Las transacciones se conservan separadas de las cuotas programadas; abonos acumulados cubren promesas y cuotas parcialmente. El estado se recalcula al abrir promesas o morosidad: pendiente antes de la fecha, vencida el día comprometido, incumplida después de la fecha si falta saldo, cumplida cuando los abonos alcanzan el compromiso (incluso si el pago llega tarde). Se crean alertas locales y avisos opcionales para vencimientos próximos/incumplimientos. Para que las alertas se procesen aunque nadie abra la interfaz, programa `python -m scripts.check_promises` diariamente en Task Scheduler (Windows) o como Cron Job en Render, con las mismas variables de entorno de la aplicación.
+
+### Telegram
+
+Configura el token y chat en variables de entorno del servidor. Los avisos son opcionales, se envían con timeout y deduplicación, y un fallo de Telegram no bloquea la operación. Ningún token se envía al navegador ni se escribe en logs.
 
 ## Estructura principal
 
@@ -117,9 +160,10 @@ database/db.py          Acceso a SQLite local o PostgreSQL de Supabase
 database/schema.sql     Esquema PostgreSQL, índices y RLS
 database/seed_data.py   Datos ficticios para SQLite local
 routes/                 Autenticación y módulos de la plataforma
-services/               Scoring, análisis IA y reportes
+services/               Scoring, análisis IA, salud, snapshots y Telegram
 templates/              Vistas HTML/Jinja
 static/                 CSS, JavaScript e imágenes
+scripts/                Tarea programable de revisión de promesas
 render.yaml             Configuración de despliegue
 ```
 

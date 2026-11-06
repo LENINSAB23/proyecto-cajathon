@@ -5,6 +5,7 @@ Genera documentos ejecutivos para comités de crédito, auditoría y cobranzas d
 
 import io
 from datetime import datetime
+from xml.sax.saxutils import escape
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -80,6 +81,8 @@ def generar_excel_reporte(tipo_reporte: str, datos: list) -> io.BytesIO:
 
         for col_idx, key in enumerate(headers, 1):
             val = item.get(key, "")
+            if isinstance(val, str) and val.startswith(("=", "+", "-", "@")):
+                val = "'" + val
             cell = ws.cell(row=row_idx, column=col_idx, value=val)
             cell.font = regular_font
             cell.border = thin_border
@@ -165,7 +168,7 @@ def generar_pdf_reporte(tipo_reporte: str, datos: list, kpis: dict = None) -> io
     # 1. Cabecera institucional
     story.append(Paragraph("<b>CAJA INTELIGENTE</b> | Sistema de Riesgo Crediticio con IA", title_style))
     story.append(Paragraph(
-        f"<b>REPORTE EJECUTIVO:</b> {tipo_reporte.upper()} &nbsp;|&nbsp; "
+        f"<b>REPORTE EJECUTIVO:</b> {escape(str(tipo_reporte).upper())} &nbsp;|&nbsp; "
         f"<b>Fecha de Emisión:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} &nbsp;|&nbsp; "
         f"<b>CMAC Perú - Sede Central</b>",
         subtitle_style
@@ -175,8 +178,8 @@ def generar_pdf_reporte(tipo_reporte: str, datos: list, kpis: dict = None) -> io
     # 2. Resumen de KPIs si se proporciona
     if kpis:
         kpi_data = [
-            [Paragraph(f"<b>{k}</b>", ParagraphStyle('KPIK', fontSize=9, fontName='Helvetica-Bold', textColor=colors.HexColor('#0B132B'))),
-             Paragraph(f"{v}", ParagraphStyle('KPIV', fontSize=10, fontName='Helvetica', textColor=colors.HexColor('#0284C7')))]
+            [Paragraph(f"<b>{escape(str(k))}</b>", ParagraphStyle('KPIK', fontSize=9, fontName='Helvetica-Bold', textColor=colors.HexColor('#0B132B'))),
+             Paragraph(escape(str(v)), ParagraphStyle('KPIV', fontSize=10, fontName='Helvetica', textColor=colors.HexColor('#0284C7')))]
             for k, v in kpis.items()
         ]
         # Agrupar en tabla de 2 columnas o 4
@@ -199,7 +202,7 @@ def generar_pdf_reporte(tipo_reporte: str, datos: list, kpis: dict = None) -> io
         raw_keys = list(datos[0].keys())
         keys_to_show = raw_keys[:7]
 
-        header_row = [Paragraph(f"<b>{k.replace('_', ' ').title()}</b>", header_cell_style) for k in keys_to_show]
+        header_row = [Paragraph(f"<b>{escape(k.replace('_', ' ').title())}</b>", header_cell_style) for k in keys_to_show]
         table_rows = [header_row]
 
         for item in datos:
@@ -209,7 +212,7 @@ def generar_pdf_reporte(tipo_reporte: str, datos: list, kpis: dict = None) -> io
                 # Formatear números si aplica
                 if isinstance(item.get(k), float):
                     val = f"{item.get(k):,.2f}"
-                row_data.append(Paragraph(val, cell_style))
+                row_data.append(Paragraph(escape(val), cell_style))
             table_rows.append(row_data)
 
         # Determinar anchos
