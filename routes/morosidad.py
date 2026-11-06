@@ -1,8 +1,7 @@
-import uuid
-from datetime import datetime
+from datetime import date, datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from routes.auth import login_required, role_required
-from database.db import query_db, execute_db
+from database.db import new_id, query_db, execute_db
 from services.credit_scoring import clasificar_dias_mora_sbs
 
 morosidad_bp = Blueprint('morosidad', __name__, url_prefix='/morosidad')
@@ -94,17 +93,22 @@ def registrar_pago(pago_id):
         flash('Registro de pago no encontrado.', 'danger')
         return redirect(url_for('morosidad.index'))
 
+    fecha_vencimiento = pago['fecha_vencimiento']
+    if not isinstance(fecha_vencimiento, date):
+        fecha_vencimiento = date.fromisoformat(fecha_vencimiento[:10])
+    dias_atraso = max(0, (datetime.now().date() - fecha_vencimiento).days)
+    clasificacion = clasificar_dias_mora_sbs(dias_atraso)['categoria']
+
     execute_db("""
         UPDATE pagos SET
             estado_pago = 'PAGADO',
             fecha_pago = ?,
             metodo_pago = ?,
-            dias_atraso = 0,
-            clasificacion_sbs = 'Normal (0 días)',
-            penalidad = 0.0,
+            dias_atraso = ?,
+            clasificacion_sbs = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (fecha_pago, metodo, pago_id))
+    """, (fecha_pago, metodo, dias_atraso, clasificacion, pago_id))
 
     flash(f'Pago de cuota N° {pago["numero_cuota"]} por S/. {pago["monto_cuota"]:,.2f} registrado exitosamente.', 'success')
     return redirect(url_for('morosidad.index'))
@@ -124,7 +128,7 @@ def crear_alerta():
         flash('Debe seleccionar un cliente y redactar el mensaje de la alerta.', 'warning')
         return redirect(url_for('morosidad.index'))
 
-    alerta_id = f"alt-{uuid.uuid4().hex[:8]}"
+    alerta_id = new_id("alt")
     execute_db("""
         INSERT INTO alertas (id, cliente_id, tipo_alerta, severidad, mensaje, accion_recomendada)
         VALUES (?, ?, ?, ?, ?, ?)

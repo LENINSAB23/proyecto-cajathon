@@ -11,9 +11,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. TABLA: usuarios
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuarios (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     nombre VARCHAR(150) NOT NULL,
     rol VARCHAR(50) NOT NULL CHECK (rol IN ('Administrador', 'Analista de créditos', 'Personal de cobranza')),
     cargo VARCHAR(100) DEFAULT 'Funcionario de Créditos',
@@ -24,6 +24,23 @@ CREATE TABLE IF NOT EXISTS usuarios (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE usuarios ALTER COLUMN password_hash DROP NOT NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'usuarios_auth_user_fkey'
+          AND conrelid = 'public.usuarios'::regclass
+    ) THEN
+        ALTER TABLE public.usuarios
+            ADD CONSTRAINT usuarios_auth_user_fkey
+            FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+            NOT VALID;
+    END IF;
+END;
+$$;
 
 -- ----------------------------------------------------------------------------
 -- 2. TABLA: clientes
@@ -217,57 +234,133 @@ ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alertas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_crediticio ENABLE ROW LEVEL SECURITY;
 
--- Políticas de lectura para usuarios autenticados
-CREATE POLICY "Lectura pública para usuarios autenticados en usuarios" 
-ON usuarios FOR SELECT TO authenticated USING (true);
+CREATE OR REPLACE FUNCTION public.usuario_tiene_rol(roles_permitidos TEXT[])
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.usuarios
+        WHERE id = auth.uid()
+          AND activo = TRUE
+          AND rol = ANY(roles_permitidos)
+    );
+$$;
 
-CREATE POLICY "Lectura completa en clientes" 
-ON clientes FOR SELECT TO authenticated USING (true);
+REVOKE ALL ON FUNCTION public.usuario_tiene_rol(TEXT[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.usuario_tiene_rol(TEXT[]) TO authenticated;
 
-CREATE POLICY "Insertar clientes personal autorizado" 
-ON clientes FOR INSERT TO authenticated WITH CHECK (true);
+REVOKE ALL ON TABLE usuarios, clientes, solicitudes_credito, evaluaciones_riesgo,
+    pagos, alertas, historial_crediticio FROM anon;
+GRANT SELECT ON TABLE usuarios TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE clientes TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE solicitudes_credito TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE evaluaciones_riesgo TO authenticated;
+GRANT SELECT, UPDATE ON TABLE pagos TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE alertas TO authenticated;
+GRANT SELECT ON TABLE historial_crediticio TO authenticated;
 
-CREATE POLICY "Actualizar clientes personal autorizado" 
-ON clientes FOR UPDATE TO authenticated USING (true);
+DROP POLICY IF EXISTS "Lectura pública para usuarios autenticados en usuarios" ON usuarios;
+DROP POLICY IF EXISTS "Lectura completa en clientes" ON clientes;
+DROP POLICY IF EXISTS "Insertar clientes personal autorizado" ON clientes;
+DROP POLICY IF EXISTS "Actualizar clientes personal autorizado" ON clientes;
+DROP POLICY IF EXISTS "Eliminar clientes administradores" ON clientes;
+DROP POLICY IF EXISTS "Lectura de solicitudes" ON solicitudes_credito;
+DROP POLICY IF EXISTS "Inserción de solicitudes" ON solicitudes_credito;
+DROP POLICY IF EXISTS "Actualización de solicitudes" ON solicitudes_credito;
+DROP POLICY IF EXISTS "Lectura de evaluaciones" ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS "Inserción de evaluaciones" ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS "Lectura de pagos" ON pagos;
+DROP POLICY IF EXISTS "Modificación de pagos cobranzas" ON pagos;
+DROP POLICY IF EXISTS "Lectura de alertas" ON alertas;
+DROP POLICY IF EXISTS "Gestión de alertas" ON alertas;
+DROP POLICY IF EXISTS "Lectura historial crediticio" ON historial_crediticio;
+DROP POLICY IF EXISTS "Acceso demo anon clientes" ON clientes;
+DROP POLICY IF EXISTS "Acceso demo anon solicitudes" ON solicitudes_credito;
+DROP POLICY IF EXISTS "Acceso demo anon evaluaciones" ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS "Acceso demo anon pagos" ON pagos;
+DROP POLICY IF EXISTS "Acceso demo anon alertas" ON alertas;
+DROP POLICY IF EXISTS "Acceso demo anon historial" ON historial_crediticio;
+DROP POLICY IF EXISTS usuarios_ver_perfil_propio ON usuarios;
+DROP POLICY IF EXISTS clientes_ver ON clientes;
+DROP POLICY IF EXISTS clientes_crear ON clientes;
+DROP POLICY IF EXISTS clientes_actualizar ON clientes;
+DROP POLICY IF EXISTS clientes_eliminar ON clientes;
+DROP POLICY IF EXISTS solicitudes_ver ON solicitudes_credito;
+DROP POLICY IF EXISTS solicitudes_crear ON solicitudes_credito;
+DROP POLICY IF EXISTS solicitudes_actualizar ON solicitudes_credito;
+DROP POLICY IF EXISTS evaluaciones_ver ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS evaluaciones_crear ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS evaluaciones_actualizar ON evaluaciones_riesgo;
+DROP POLICY IF EXISTS pagos_ver ON pagos;
+DROP POLICY IF EXISTS pagos_actualizar ON pagos;
+DROP POLICY IF EXISTS alertas_ver ON alertas;
+DROP POLICY IF EXISTS alertas_crear ON alertas;
+DROP POLICY IF EXISTS alertas_actualizar ON alertas;
+DROP POLICY IF EXISTS historial_ver ON historial_crediticio;
 
-CREATE POLICY "Eliminar clientes administradores" 
-ON clientes FOR DELETE TO authenticated USING (true);
+CREATE POLICY usuarios_ver_perfil_propio
+ON usuarios FOR SELECT TO authenticated
+USING (id = auth.uid() OR public.usuario_tiene_rol(ARRAY['Administrador']));
 
-CREATE POLICY "Lectura de solicitudes" 
-ON solicitudes_credito FOR SELECT TO authenticated USING (true);
+CREATE POLICY clientes_ver
+ON clientes FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos', 'Personal de cobranza']));
+CREATE POLICY clientes_crear
+ON clientes FOR INSERT TO authenticated
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY clientes_actualizar
+ON clientes FOR UPDATE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']))
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY clientes_eliminar
+ON clientes FOR DELETE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador']));
 
-CREATE POLICY "Inserción de solicitudes" 
-ON solicitudes_credito FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY solicitudes_ver
+ON solicitudes_credito FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY solicitudes_crear
+ON solicitudes_credito FOR INSERT TO authenticated
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY solicitudes_actualizar
+ON solicitudes_credito FOR UPDATE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']))
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
 
-CREATE POLICY "Actualización de solicitudes" 
-ON solicitudes_credito FOR UPDATE TO authenticated USING (true);
+CREATE POLICY evaluaciones_ver
+ON evaluaciones_riesgo FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY evaluaciones_crear
+ON evaluaciones_riesgo FOR INSERT TO authenticated
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
+CREATE POLICY evaluaciones_actualizar
+ON evaluaciones_riesgo FOR UPDATE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']))
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));
 
-CREATE POLICY "Lectura de evaluaciones" 
-ON evaluaciones_riesgo FOR SELECT TO authenticated USING (true);
+CREATE POLICY pagos_ver
+ON pagos FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos', 'Personal de cobranza']));
+CREATE POLICY pagos_actualizar
+ON pagos FOR UPDATE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']))
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']));
 
-CREATE POLICY "Inserción de evaluaciones" 
-ON evaluaciones_riesgo FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY alertas_ver
+ON alertas FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos', 'Personal de cobranza']));
+CREATE POLICY alertas_crear
+ON alertas FOR INSERT TO authenticated
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos', 'Personal de cobranza']));
+CREATE POLICY alertas_actualizar
+ON alertas FOR UPDATE TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']))
+WITH CHECK (public.usuario_tiene_rol(ARRAY['Administrador', 'Personal de cobranza']));
 
-CREATE POLICY "Lectura de pagos" 
-ON pagos FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY "Modificación de pagos cobranzas" 
-ON pagos FOR ALL TO authenticated USING (true);
-
-CREATE POLICY "Lectura de alertas" 
-ON alertas FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY "Gestión de alertas" 
-ON alertas FOR ALL TO authenticated USING (true);
-
-CREATE POLICY "Lectura historial crediticio" 
-ON historial_crediticio FOR SELECT TO authenticated USING (true);
-
--- Permisos para rol de servicio anónimo (en demostración)
-CREATE POLICY "Acceso demo anon clientes" ON clientes FOR ALL TO anon USING (true);
-CREATE POLICY "Acceso demo anon solicitudes" ON solicitudes_credito FOR ALL TO anon USING (true);
-CREATE POLICY "Acceso demo anon evaluaciones" ON evaluaciones_riesgo FOR ALL TO anon USING (true);
-CREATE POLICY "Acceso demo anon pagos" ON pagos FOR ALL TO anon USING (true);
-CREATE POLICY "Acceso demo anon alertas" ON alertas FOR ALL TO anon USING (true);
-CREATE POLICY "Acceso demo anon historial" ON historial_crediticio FOR ALL TO anon USING (true);
-
+CREATE POLICY historial_ver
+ON historial_crediticio FOR SELECT TO authenticated
+USING (public.usuario_tiene_rol(ARRAY['Administrador', 'Analista de créditos']));

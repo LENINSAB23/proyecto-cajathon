@@ -43,14 +43,8 @@ REGLAS ESTRICTAS:
   "recomendaciones": "<recomendaciones prácticas para el analista: aprobación condicionada, garantías, plazo, monto>"
 }"""
 
-            prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para la plataforma Credit Risk:
-DATOS DEL CLIENTE:
-- Nombre: {datos_cliente.get('nombres')} {datos_cliente.get('apellidos')}
-- DNI: {datos_cliente.get('dni')}
-- Edad: {datos_cliente.get('edad')} años
-- Ocupación: {datos_cliente.get('ocupacion')}
-- Sector: {datos_cliente.get('sector_economico', 'Comercio')}
-- Situación Laboral: {datos_solicitud.get('situacion_laboral')}
+            prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para la plataforma CAJA INTELIGENTE.
+No se incluyen datos identificativos ni características protegidas. Basa el análisis solo en métricas financieras y comportamiento de pago.
 
 MÉTRICAS FINANCIERAS CUANTITATIVAS CALCULADAS:
 - Ingresos Mensuales: S/. {metricas.get('ingresos', datos_solicitud.get('ingresos_declarados'))}
@@ -79,9 +73,9 @@ MÉTRICAS FINANCIERAS CUANTITATIVAS CALCULADAS:
             resultado_ia = json.loads(contenido)
             
             # Validar y agregar metadatos
-            resultado_ia["modelo_ia_utilizado"] = "Motor IA Credit Risk"
+            resultado_ia["modelo_ia_utilizado"] = "Motor IA CAJA INTELIGENTE"
             resultado_ia["es_modo_demo"] = False
-            resultado_ia["aviso_legal"] = "Evaluación generada por el sistema de Inteligencia Artificial Credit Risk como herramienta de apoyo analítico. La decisión final corresponde al comité de créditos conforme a normas SBS."
+            resultado_ia["aviso_legal"] = "Evaluación generada por el sistema de Inteligencia Artificial CAJA INTELIGENTE como herramienta de apoyo analítico. La decisión final corresponde al comité de créditos conforme a normas SBS."
             return resultado_ia
 
         except Exception as err:
@@ -194,8 +188,7 @@ def generar_evaluacion_heuristica_ia(solicitud: dict, cliente: dict, metricas: d
         "probabilidad_morosidad_30d": min(95.0, prob_30d),
         "probabilidad_morosidad_90d": min(98.0, prob_90d),
         "recomendaciones": recomendaciones,
-        "modelo_ia_utilizado": "Motor IA Credit Risk (SBS)",
+        "modelo_ia_utilizado": "Motor IA CAJA INTELIGENTE (SBS)",
         "es_modo_demo": True,
         "aviso_legal": "Evaluación asistida por Inteligencia Artificial orientada a la toma de decisión humana. Cumple con la normativa de gestión de riesgo crediticio SBS Resolución N° 11356-2008."
     }
-

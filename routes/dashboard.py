@@ -1,6 +1,8 @@
+from datetime import datetime
 from flask import Blueprint, render_template, jsonify
 from routes.auth import login_required, role_required
 from database.db import query_db
+from config import Config
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -10,7 +12,7 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @role_required('Administrador', 'Analista de créditos')
 def index():
     # 1. Total clientes registrados
-    total_clientes = query_db("SELECT COUNT(*) as total FROM clientes WHERE activo = 1", one=True)['total']
+    total_clientes = query_db("SELECT COUNT(*) as total FROM clientes WHERE activo = TRUE", one=True)['total']
 
     # 2. Total solicitudes de crédito y desglose de estados
     total_solicitudes = query_db("SELECT COUNT(*) as total FROM solicitudes_credito", one=True)['total']
@@ -20,7 +22,7 @@ def index():
     rechazados = query_db("SELECT COUNT(*) as total FROM solicitudes_credito WHERE estado = 'RECHAZADO'", one=True)['total']
 
     # 3. Clientes con riesgo alto
-    clientes_riesgo_alto = query_db("SELECT COUNT(*) as total FROM clientes WHERE nivel_riesgo = 'ALTO' AND activo = 1", one=True)['total']
+    clientes_riesgo_alto = query_db("SELECT COUNT(*) as total FROM clientes WHERE nivel_riesgo = 'ALTO' AND activo = TRUE", one=True)['total']
 
     # 4. Cálculo de Morosidad
     # Total de cuotas vencidas o en mora vs total de cuotas exigibles
@@ -92,10 +94,41 @@ def chart_data():
     medio = query_db("SELECT COUNT(*) as cnt FROM clientes WHERE nivel_riesgo = 'MEDIO'", one=True)['cnt']
     alto = query_db("SELECT COUNT(*) as cnt FROM clientes WHERE nivel_riesgo = 'ALTO'", one=True)['cnt']
 
-    # Solicitudes por Mes (simulado dinámicamente)
-    meses = ['Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov']
-    montos_solicitados = [35000, 48000, 62000, 75000, 89000, 115000]
-    montos_aprobados = [28000, 39000, 51000, 64000, 71000, 92000]
+    if Config.DATABASE_URL:
+        monthly_rows = query_db("""
+            SELECT TO_CHAR(fecha_solicitud, 'YYYY-MM') as mes,
+                   SUM(monto_solicitado) as solicitado,
+                   SUM(CASE WHEN estado = 'APROBADO' THEN monto_solicitado ELSE 0 END) as aprobado
+            FROM solicitudes_credito
+            WHERE fecha_solicitud >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+            GROUP BY TO_CHAR(fecha_solicitud, 'YYYY-MM')
+        """)
+    else:
+        monthly_rows = query_db("""
+            SELECT STRFTIME('%Y-%m', fecha_solicitud) as mes,
+                   SUM(monto_solicitado) as solicitado,
+                   SUM(CASE WHEN estado = 'APROBADO' THEN monto_solicitado ELSE 0 END) as aprobado
+            FROM solicitudes_credito
+            WHERE DATETIME(fecha_solicitud) >= DATETIME('now', 'start of month', '-5 months')
+            GROUP BY STRFTIME('%Y-%m', fecha_solicitud)
+        """)
+
+    month_names = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic']
+    month_keys = []
+    today = datetime.now()
+    current_year, current_month = today.year, today.month
+    for offset in range(5, -1, -1):
+        month_index = current_year * 12 + current_month - 1 - offset
+        year, month_zero_based = divmod(month_index, 12)
+        month_keys.append(f"{year:04d}-{month_zero_based + 1:02d}")
+
+    monthly_totals = {
+        row['mes']: (float(row['solicitado'] or 0), float(row['aprobado'] or 0))
+        for row in monthly_rows
+    }
+    meses = [month_names[int(key[5:7]) - 1] for key in month_keys]
+    montos_solicitados = [monthly_totals.get(key, (0, 0))[0] for key in month_keys]
+    montos_aprobados = [monthly_totals.get(key, (0, 0))[1] for key in month_keys]
 
     return jsonify({
         'distribucion_riesgos': {

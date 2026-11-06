@@ -1,7 +1,6 @@
-import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from routes.auth import login_required, role_required
-from database.db import query_db, execute_db
+from database.db import new_id, query_db, execute_db
 from services.credit_scoring import calcular_scoring_analitico
 
 clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
@@ -13,7 +12,7 @@ def index():
     q = request.args.get('q', '').strip()
     nivel_filtro = request.args.get('nivel', '').strip()
 
-    sql = "SELECT * FROM clientes WHERE activo = 1"
+    sql = "SELECT * FROM clientes WHERE activo = TRUE"
     params = []
 
     if q:
@@ -63,7 +62,7 @@ def crear():
         # Generar código correlativo
         conteo = query_db("SELECT COUNT(*) as cnt FROM clientes", one=True)['cnt'] + 1
         codigo_cliente = f"CLI-2024-{conteo:03d}"
-        cliente_id = f"cli-{uuid.uuid4().hex[:8]}"
+        cliente_id = new_id("cli")
 
         # Evaluación financiera preliminar
         scoring = calcular_scoring_analitico({

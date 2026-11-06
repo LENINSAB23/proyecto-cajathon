@@ -38,7 +38,7 @@ def generar_excel_reporte(tipo_reporte: str, datos: list) -> io.BytesIO:
 
     # Encabezado Institucional
     ws.merge_cells("A1:G1")
-    ws["A1"] = "CREDIT RISK - SISTEMA DE EVALUACIÓN DE RIESGO CREDITICIO"
+    ws["A1"] = "CAJA INTELIGENTE - SISTEMA DE EVALUACIÓN DE RIESGO CREDITICIO"
     ws["A1"].font = title_font
     ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
 
@@ -163,7 +163,7 @@ def generar_pdf_reporte(tipo_reporte: str, datos: list, kpis: dict = None) -> io
     story = []
 
     # 1. Cabecera institucional
-    story.append(Paragraph("<b>CREDIT RISK</b> | Sistema de Riesgo Crediticio con IA", title_style))
+    story.append(Paragraph("<b>CAJA INTELIGENTE</b> | Sistema de Riesgo Crediticio con IA", title_style))
     story.append(Paragraph(
         f"<b>REPORTE EJECUTIVO:</b> {tipo_reporte.upper()} &nbsp;|&nbsp; "
         f"<b>Fecha de Emisión:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} &nbsp;|&nbsp; "

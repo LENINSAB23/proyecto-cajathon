@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Credit Risk{% endblock %} - Evaluación de Riesgo Crediticio</title>
+  <title>{% block title %}{{ app_name }}{% endblock %} - Evaluación de Riesgo Crediticio</title>
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
@@ -31,9 +31,9 @@
   <!-- SIDEBAR NAVEGACIÓN -->
   <aside class="app-sidebar" id="appSidebar">
     <div class="sidebar-brand">
-      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Credit Risk">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="CAJA INTELIGENTE">
       <div>
-        <h1 class="brand-title">Credit Risk</h1>
+        <h1 class="brand-title">CAJA INTELIGENTE</h1>
         <span class="brand-subtitle"><i class="fa-solid fa-chart-line me-1"></i>Riesgo Crediticio CMAC</span>
       </div>
     </div>
@@ -92,10 +92,14 @@
     <div class="sidebar-footer">
       <div class="system-status mb-2">
         <div class="status-dot"></div>
-        <span>Sistema de Riesgos: <strong>En línea</strong></span>
+        <span>{{ database_provider }}: <strong>En línea</strong></span>
       </div>
       <div class="d-flex align-items-center justify-content-between">
-        <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i> Motor IA Activo</span>
+        {% if demo_mode %}
+          <span class="badge bg-warning text-dark"><i class="fa-solid fa-flask me-1"></i> Demo · datos ficticios</span>
+        {% else %}
+          <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i> Motor IA</span>
+        {% endif %}
         <a href="{{ url_for('auth.logout') }}" class="text-secondary text-decoration-none" title="Cerrar Sesión">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
         </a>
@@ -199,7 +203,7 @@
     <!-- FOOTER INFORMATIVO -->
     <footer class="bg-white border-top py-3 px-4 text-center text-muted small mt-auto">
       <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
-        <span>&copy; 2026 <strong>Credit Risk</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con IA.</span>
+        <span>&copy; 2026 <strong>CAJA INTELIGENTE</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con IA.</span>
         <span>Normativa SBS Res. N° 11356-2008 &bull; Especialidad en Microfinanzas CMAC</span>
       </div>
     </footer>

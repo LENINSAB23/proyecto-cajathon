@@ -12,27 +12,26 @@ from database.seed_data import (
     get_demo_historial
 )
 
-supabase_client = None
-
 def get_supabase():
-    """Inicializa y retorna el cliente de Supabase si las credenciales están configuradas."""
-    global supabase_client
-    if supabase_client is not None:
-        return supabase_client
+    """Crea un cliente de autenticación aislado para evitar compartir sesiones."""
+    if not Config.SUPABASE_URL or not Config.SUPABASE_KEY:
+        raise RuntimeError("SUPABASE_URL y SUPABASE_KEY son obligatorios para Supabase Auth.")
 
-    if Config.SUPABASE_URL and Config.SUPABASE_KEY and "tu-proyecto" not in Config.SUPABASE_URL:
-        try:
-            from supabase import create_client
-            supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
-            print("[INFO] Conectado exitosamente a Supabase Cloud.")
-            return supabase_client
-        except Exception as e:
-            print(f"[WARN] Error conectando a Supabase: {e}. Usando base de datos local SQLite.")
-            return None
-    return None
+    from supabase import create_client
+    return create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
 def get_connection():
-    """Retorna una conexión a la base de datos SQLite local configurada para devolver diccionarios."""
+    """Retorna una conexión a PostgreSQL de Supabase o a SQLite local."""
+    if Config.DATABASE_URL:
+        import psycopg2
+        from psycopg2.extensions import parse_dsn
+        from psycopg2.extras import RealDictCursor
+
+        connection_options = parse_dsn(Config.DATABASE_URL)
+        connection_options.setdefault("sslmode", "require")
+        connection_options["connect_timeout"] = "10"
+        return psycopg2.connect(cursor_factory=RealDictCursor, **connection_options)
+
     os.makedirs(os.path.dirname(Config.SQLITE_DB_PATH), exist_ok=True)
     conn = sqlite3.connect(Config.SQLITE_DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -44,7 +43,14 @@ def query_db(query, args=(), one=False):
     conn = get_connection()
     try:
         cur = conn.cursor()
-        cur.execute(query, args)
+        if Config.DATABASE_URL:
+            query = query.replace("?", "%s")
+            if args:
+                cur.execute(query, args)
+            else:
+                cur.execute(query)
+        else:
+            cur.execute(query, args)
         rv = cur.fetchall()
         cur.close()
         res = [dict(ix) for ix in rv]
@@ -57,7 +63,14 @@ def execute_db(query, args=()):
     conn = get_connection()
     try:
         cur = conn.cursor()
-        cur.execute(query, args)
+        if Config.DATABASE_URL:
+            query = query.replace("?", "%s")
+            if args:
+                cur.execute(query, args)
+            else:
+                cur.execute(query)
+        else:
+            cur.execute(query, args)
         conn.commit()
         last_id = cur.lastrowid
         row_count = cur.rowcount
@@ -66,8 +79,39 @@ def execute_db(query, args=()):
     finally:
         conn.close()
 
+def new_id(prefix):
+    """Genera UUIDs compatibles con Supabase y prefijos legibles en SQLite demo."""
+    import uuid
+
+    return str(uuid.uuid4()) if Config.DATABASE_URL else f"{prefix}-{uuid.uuid4().hex[:8]}"
+
 def init_db():
     """Inicializa las tablas de la base de datos y carga datos de demostración si está vacía."""
+    if Config.DATABASE_URL:
+        expected_tables = {
+            "usuarios", "clientes", "solicitudes_credito", "evaluaciones_riesgo",
+            "pagos", "alertas", "historial_crediticio"
+        }
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = ANY(%s)
+                """, (list(expected_tables),))
+                existing_tables = {row["table_name"] for row in cur.fetchall()}
+            missing_tables = expected_tables - existing_tables
+            if missing_tables:
+                raise RuntimeError(
+                    "Faltan tablas en Supabase: " + ", ".join(sorted(missing_tables))
+                    + ". Ejecuta database/schema.sql en el SQL Editor de Supabase."
+                )
+        finally:
+            conn.close()
+        return
+
     conn = get_connection()
     cur = conn.cursor()
 
@@ -268,5 +312,15 @@ def init_db():
         conn.commit()
         print("[INFO] Datos de demostración sembrados con éxito (17 clientes, 20 solicitudes, pagos, alertas, historial).")
 
+    cur.execute("""
+        UPDATE usuarios
+        SET activo = 0
+        WHERE id IN ('u-004', 'u-005', 'u-006')
+          AND email IN (
+              'admin@cajainteligente.pe',
+              'analista@cajainteligente.pe',
+              'cobranzas@cajainteligente.pe'
+          )
+    """)
+    conn.commit()
     conn.close()
-

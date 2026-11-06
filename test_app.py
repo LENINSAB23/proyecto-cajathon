@@ -1,15 +1,109 @@
 from app import create_app
+from types import SimpleNamespace
+from unittest.mock import patch
+from werkzeug.security import check_password_hash
+from database.db import new_id, query_db
+from config import Config
+from routes.auth import authenticate_user
+from supabase import AuthError
+
+def test_postgres_query_adapter():
+    class FakeCursor:
+        def __init__(self):
+            self.statement = None
+
+        def execute(self, statement, params=None):
+            self.statement = (statement, params)
+
+        def fetchall(self):
+            return [{'id': '00000000-0000-0000-0000-000000000001'}]
+
+        def close(self):
+            pass
+
+    class FakeConnection:
+        def __init__(self):
+            self.test_cursor = FakeCursor()
+
+        def cursor(self):
+            return self.test_cursor
+
+        def close(self):
+            pass
+
+    fake_connection = FakeConnection()
+    with patch('database.db.Config.DATABASE_URL', 'postgresql://test'):
+        with patch('database.db.get_connection', return_value=fake_connection):
+            result = query_db("SELECT id FROM usuarios WHERE id = ?", ('test-id',), one=True)
+            generated_id = new_id('test')
+
+    assert fake_connection.test_cursor.statement == (
+        "SELECT id FROM usuarios WHERE id = %s",
+        ('test-id',)
+    )
+    assert result['id'] == '00000000-0000-0000-0000-000000000001'
+    assert len(generated_id) == 36
 
 def run_tests():
     app = create_app()
     client = app.test_client()
 
-    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: CREDIT RISK ---")
+    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: CAJA INTELIGENTE ---")
+
+    login_page = app.test_client().get('/login')
+    assert b'CAJA INTELIGENTE' in login_page.data
+    assert b'admin@creditrisk.pe' in login_page.data
+    assert b'analista@creditrisk.pe' in login_page.data
+    assert b'cobranzas@creditrisk.pe' in login_page.data
 
     # 1. Login demo
-    res = client.get('/demo-login/admin', follow_redirects=True)
+    res = client.post('/login', data={
+        'email': 'admin@creditrisk.pe',
+        'password': 'admin123'
+    }, follow_redirects=True)
     assert res.status_code == 200
+    with client.session_transaction() as user_session:
+        assert user_session['user_role'] == 'Administrador'
+    admin_user = query_db("SELECT email, rol, password_hash FROM usuarios WHERE email = ?", ('admin@creditrisk.pe',), one=True)
+    assert admin_user and admin_user['rol'] == 'Administrador'
+    assert check_password_hash(admin_user['password_hash'], 'admin123')
+    assert query_db("SELECT COUNT(*) as cnt FROM usuarios", one=True)['cnt'] == 3
     print("1. [PASS] Autenticación y sesión de Administrador")
+
+    supabase_profile = {
+        'id': '00000000-0000-0000-0000-000000000001',
+        'email': 'analista@creditrisk.pe',
+        'rol': 'Analista de créditos',
+        'activo': True
+    }
+    supabase_auth = SimpleNamespace(
+        auth=SimpleNamespace(
+            sign_in_with_password=lambda credentials: SimpleNamespace(
+                user=SimpleNamespace(id=supabase_profile['id'], email=credentials['email'])
+            )
+        )
+    )
+    with patch.object(Config, 'USE_SUPABASE_AUTH', True):
+        with patch('routes.auth.get_supabase', return_value=supabase_auth):
+            with patch('routes.auth.query_db', return_value=supabase_profile) as profile_lookup:
+                authenticated_profile = authenticate_user('analista@creditrisk.pe', 'supabase-password')
+    assert authenticated_profile['rol'] == 'Analista de créditos'
+    assert profile_lookup.call_args.args[1] == (supabase_profile['id'],)
+    auth_error = AuthError('Invalid login credentials', 'invalid_credentials')
+    auth_error.status = 400
+    failing_auth = SimpleNamespace(
+        auth=SimpleNamespace(
+            sign_in_with_password=lambda credentials: (_ for _ in ()).throw(auth_error)
+        )
+    )
+    with patch.object(Config, 'USE_SUPABASE_AUTH', True):
+        with patch('routes.auth.get_supabase', return_value=failing_auth):
+            with patch('routes.auth.query_db') as profile_lookup:
+                assert authenticate_user('analista@creditrisk.pe', 'wrong-password') is None
+                profile_lookup.assert_not_called()
+    print("1a. [PASS] Supabase Auth vincula el UID autenticado al perfil y su rol")
+    test_postgres_query_adapter()
+    print("1b. [PASS] Adaptación de consultas y UUIDs compatibles con PostgreSQL")
 
     # 2. Dashboard
     res = client.get('/dashboard')
@@ -22,7 +116,12 @@ def run_tests():
     assert res.status_code == 200
     data = res.get_json()
     assert "distribucion_riesgos" in data
+    assert len(data['solicitudes_mensuales']['labels']) == 6
+    assert sum(data['solicitudes_mensuales']['solicitado']) > 0
     print("3. [PASS] Endpoint de datos para Chart.js (Donut y Barras)")
+
+    assert client.get('/health').status_code == 200
+    print("3a. [PASS] Comprobación de salud y conexión a base de datos")
 
     # 4. Clientes
     res = client.get('/clientes/')
@@ -104,8 +203,13 @@ def run_tests():
     print("15. [PASS] Exportaciones PDF/Excel de riesgo alto y morosidad")
 
     analista_client = app.test_client()
-    res = analista_client.get('/demo-login/analista')
+    res = analista_client.post('/login', data={
+        'email': 'analista@creditrisk.pe',
+        'password': 'analista123'
+    })
     assert res.status_code == 302 and res.headers['Location'].endswith('/dashboard')
+    with analista_client.session_transaction() as user_session:
+        assert user_session['user_role'] == 'Analista de créditos'
     assert analista_client.get('/clientes/').status_code == 200
     assert analista_client.get('/creditos/').status_code == 200
     assert analista_client.get('/riesgos/').status_code == 200
@@ -116,8 +220,14 @@ def run_tests():
     print("16. [PASS] Analista limitado a clientes, créditos y evaluación de riesgo")
 
     cobranzas_client = app.test_client()
-    res = cobranzas_client.get('/demo-login/cobranzas')
+    res = cobranzas_client.post('/login', data={
+        'email': 'cobranzas@creditrisk.pe',
+        'password': 'cobranza123',
+        'rol': 'Administrador'
+    })
     assert res.status_code == 302 and res.headers['Location'].endswith('/morosidad/')
+    with cobranzas_client.session_transaction() as user_session:
+        assert user_session['user_role'] == 'Personal de cobranza'
     assert cobranzas_client.get('/morosidad/').status_code == 200
     for path in ('/dashboard', '/clientes/', '/creditos/', '/riesgos/', '/reportes/'):
         assert cobranzas_client.get(path).status_code == 302

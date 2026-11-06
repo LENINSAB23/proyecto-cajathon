@@ -1,11 +1,18 @@
-import uuid
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.auth import login_required, role_required
-from database.db import query_db, execute_db
+from database.db import new_id, query_db, execute_db
 from services.ia_service import analizar_riesgo_con_ia
 
 riesgos_bp = Blueprint('riesgos', __name__, url_prefix='/riesgos')
+
+def _read_json_list(value):
+    if isinstance(value, list):
+        return value
+    if not value:
+        return []
+    parsed = json.loads(value)
+    return parsed if isinstance(parsed, list) else []
 
 @riesgos_bp.route('/')
 @login_required
@@ -70,12 +77,9 @@ def evaluar(solicitud_id):
     factores_neg = []
     alertas_ia = []
     if evaluacion:
-        try:
-            factores_pos = json.loads(evaluacion.get('factores_positivos') or '[]')
-            factores_neg = json.loads(evaluacion.get('factores_negativos') or '[]')
-            alertas_ia = json.loads(evaluacion.get('senales_alerta') or '[]')
-        except Exception:
-            pass
+        factores_pos = _read_json_list(evaluacion.get('factores_positivos'))
+        factores_neg = _read_json_list(evaluacion.get('factores_negativos'))
+        alertas_ia = _read_json_list(evaluacion.get('senales_alerta'))
 
     return render_template(
         'evaluacion.html',
@@ -116,7 +120,7 @@ def procesar_ia(solicitud_id):
     resultado = analizar_riesgo_con_ia(solicitud, datos_cliente)
 
     eval_existente = query_db("SELECT id FROM evaluaciones_riesgo WHERE solicitud_id = ?", (solicitud_id,), one=True)
-    eval_id = eval_existente['id'] if eval_existente else f"eval-{uuid.uuid4().hex[:8]}"
+    eval_id = eval_existente['id'] if eval_existente else new_id("eval")
 
     analista_nombre = session.get('user_name', 'Analista de Créditos')
 
@@ -134,7 +138,7 @@ def procesar_ia(solicitud_id):
             json.dumps(resultado['factores_positivos']), json.dumps(resultado['factores_negativos']),
             json.dumps(resultado['senales_alerta']), resultado['probabilidad_morosidad_30d'],
             resultado['probabilidad_morosidad_90d'], resultado['recomendaciones'],
-            resultado['modelo_ia_utilizado'], 1 if resultado['es_modo_demo'] else 0,
+            resultado['modelo_ia_utilizado'], bool(resultado['es_modo_demo']),
             analista_nombre, eval_id
         ))
     else:
@@ -151,7 +155,7 @@ def procesar_ia(solicitud_id):
             json.dumps(resultado['factores_positivos']), json.dumps(resultado['factores_negativos']),
             json.dumps(resultado['senales_alerta']), resultado['probabilidad_morosidad_30d'],
             resultado['probabilidad_morosidad_90d'], resultado['recomendaciones'],
-            resultado['modelo_ia_utilizado'], 1 if resultado['es_modo_demo'] else 0,
+            resultado['modelo_ia_utilizado'], bool(resultado['es_modo_demo']),
             analista_nombre
         ))
 
@@ -161,7 +165,7 @@ def procesar_ia(solicitud_id):
 
     # Si se detectó riesgo alto o señales críticas, emitir alerta automática
     if resultado['nivel_riesgo'] == 'ALTO' or solicitud['ratio_dti'] > 50:
-        alerta_id = f"alt-{uuid.uuid4().hex[:8]}"
+        alerta_id = new_id("alt")
         execute_db("""
             INSERT INTO alertas (id, cliente_id, solicitud_id, tipo_alerta, severidad, mensaje, accion_recomendada)
             VALUES (?, ?, ?, 'Alerta IA: Riesgo Alto Detectado', 'ALTA', ?, ?)

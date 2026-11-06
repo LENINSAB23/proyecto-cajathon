@@ -1,7 +1,6 @@
-import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from routes.auth import login_required, role_required
-from database.db import query_db, execute_db
+from database.db import new_id, query_db, execute_db
 from services.credit_scoring import (
     calcular_cuota_mensual,
     calcular_capacidad_pago,
@@ -40,7 +39,7 @@ def index():
 
     sql += " ORDER BY s.created_at DESC"
     solicitudes = query_db(sql, params)
-    clientes = query_db("SELECT id, nombres, apellidos, dni, ingresos_mensuales, gastos_mensuales, deudas_actuales FROM clientes WHERE activo = 1 ORDER BY nombres ASC")
+    clientes = query_db("SELECT id, nombres, apellidos, dni, ingresos_mensuales, gastos_mensuales, deudas_actuales FROM clientes WHERE activo = TRUE ORDER BY nombres ASC")
 
     return render_template(
         'creditos.html',
@@ -124,7 +123,7 @@ def crear():
         # Generar correlativo
         conteo = query_db("SELECT COUNT(*) as cnt FROM solicitudes_credito", one=True)['cnt'] + 1
         numero_solicitud = f"SOL-2024-{conteo:03d}"
-        solicitud_id = f"sol-{uuid.uuid4().hex[:8]}"
+        solicitud_id = new_id("sol")
 
         execute_db("""
             INSERT INTO solicitudes_credito (

@@ -1,8 +1,11 @@
 from functools import wraps
 from urllib.parse import urlsplit
-from flask import Blueprint, abort, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for, session, flash
+from httpx import HTTPError
+from supabase import AuthError
 from werkzeug.security import check_password_hash
-from database.db import query_db, execute_db
+from database.db import get_supabase, query_db, execute_db
+from config import Config
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -44,6 +47,40 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
+def authenticate_user(email, password):
+    if Config.USE_SUPABASE_AUTH:
+        try:
+            response = get_supabase().auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+        except AuthError as error:
+            if getattr(error, "status", None) in (400, 401):
+                return None
+            raise
+
+        auth_user = response.user
+        if not auth_user or not auth_user.email:
+            return None
+
+        user = query_db(
+            "SELECT * FROM usuarios WHERE id = ? AND activo = TRUE",
+            (str(auth_user.id),),
+            one=True
+        )
+        if user and user['email'].strip().lower() == auth_user.email.strip().lower():
+            return user
+        return None
+
+    user = query_db(
+        "SELECT * FROM usuarios WHERE email = ? AND activo = TRUE",
+        (email,),
+        one=True
+    )
+    if user and user.get('password_hash') and check_password_hash(user['password_hash'], password):
+        return user
+    return None
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
@@ -53,8 +90,14 @@ def login():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
 
-        user = query_db("SELECT * FROM usuarios WHERE email = ? AND activo = 1", (email,), one=True)
-        if user and check_password_hash(user['password_hash'], password):
+        try:
+            user = authenticate_user(email, password)
+        except (HTTPError, AuthError):
+            current_app.logger.exception("No se pudo validar la cuenta de inicio de sesión")
+            flash('No se pudo validar el acceso en este momento. Inténtelo nuevamente.', 'danger')
+            return render_template('login.html')
+
+        if user:
             session.clear()
             session['user_id'] = user['id']
             session['user_name'] = user['nombre']
@@ -65,7 +108,7 @@ def login():
             session['user_avatar'] = user.get('avatar_url')
 
             execute_db("UPDATE usuarios SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
-            flash(f'¡Bienvenido a Credit Risk, {user["nombre"]}!', 'success')
+            flash(f'¡Bienvenido a CAJA INTELIGENTE, {user["nombre"]}!', 'success')
             next_url = request.args.get('next', '')
             target = urlsplit(next_url)
             if (
@@ -85,10 +128,13 @@ def login():
 @auth_bp.route('/demo-login/<role>')
 def demo_login(role):
     """Acceso rápido con un clic para evaluadores del proyecto según el rol deseado."""
+    if not Config.DEMO_LOGIN_ENABLED:
+        abort(404)
+
     role_map = {
-        'admin': 'admin@cajainteligente.pe',
-        'analista': 'analista@cajainteligente.pe',
-        'cobranzas': 'cobranzas@cajainteligente.pe'
+        'admin': 'admin@creditrisk.pe',
+        'analista': 'analista@creditrisk.pe',
+        'cobranzas': 'cobranzas@creditrisk.pe'
     }
     email = role_map.get(role.lower())
     if not email:

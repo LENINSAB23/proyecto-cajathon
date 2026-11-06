@@ -1,107 +1,128 @@
-# 🏛️ Credit Risk
-### Sistema de Evaluación de Riesgo Crediticio y Prevención de Morosidad con Inteligencia Artificial
-> **Especialidad:** Gestión de Riesgos Financieros y Evaluación de Morosidad para Cajas Municipales de Ahorro y Crédito (CMAC) del Perú  
-> **Marco Regulatorio:** Superintendencia de Banca, Seguros y AFP (SBS Perú - Resolución N° 11356-2008)
+# CAJA INTELIGENTE
 
----
+Sistema web de demostración para evaluación de riesgo crediticio y prevención de morosidad en Cajas Municipales de Ahorro y Crédito del Perú. La IA brinda recomendaciones explicables; el dictamen final siempre corresponde a una persona autorizada.
 
-## 📌 1. Visión General del Proyecto
+## Funcionalidades
 
-**Credit Risk** es una plataforma web orientada al sector financiero y de microfinanzas, diseñada para asistir a los analistas y comités de crédito de las Cajas Municipales en la toma de decisiones informadas, transparentes y seguras.
+- Dashboard con indicadores de clientes, solicitudes, aprobaciones, riesgo y morosidad.
+- Gestión y búsqueda de clientes, perfil financiero e historial crediticio.
+- Registro y simulación de solicitudes de crédito: cuota francesa, capacidad de pago, DTI e ingreso disponible.
+- Evaluación de riesgo con OpenAI y motor heurístico de respaldo (sin conexión externa).
+- Gestión de pagos, cuotas atrasadas, alertas preventivas y clasificación SBS.
+- Reportes de evaluaciones, solicitudes, clientes de riesgo alto y morosidad en PDF y Excel.
+- Roles separados, validados en las rutas del servidor:
+  - **Administrador:** acceso a todos los módulos, eliminación de clientes y reportes.
+  - **Analista de créditos:** clientes, solicitudes y evaluaciones; no gestiona cobranzas ni elimina clientes.
+  - **Personal de cobranza:** morosidad, registro de pagos, alertas y reporte de morosidad.
 
-El sistema aborda dos de los principales desafíos en la gestión crediticia:
-1. **Evaluación Rigurosa del Riesgo:** Análisis multifactorial de la solvencia del solicitante, combinando ratios financieros tradicionales con modelos avanzados de inteligencia artificial.
-2. **Detección Temprana y Prevención de Morosidad:** Monitoreo constante del comportamiento de pago, alertas preventivas ante descalces de liquidez y clasificación de cartera conforme a la normativa SBS.
+## Tecnologías
 
----
+Python 3.10+, Flask, PostgreSQL/Supabase, Supabase Auth, SQLite para demostración local, OpenAI API opcional, Chart.js, ReportLab, OpenPyXL, Gunicorn y Render.
 
-## 💻 2. Módulos del Sistema
+## Ejecución local
 
-### Módulo 1: Dashboard Financiero
-- Indicadores clave de desempeño (KPIs): Total de colocaciones, clientes registrados, créditos aprobados, solicitudes en trámite, porcentaje de morosidad y clientes clasificados en riesgo alto.
-- Gráficos interactivos de evolución mensual de colocaciones y distribución de cartera por niveles de riesgo.
-- Notificaciones de actividad reciente y alertas financieras de atención inmediata.
-
-### Módulo 2: Gestión de Clientes 360°
-- Expediente digital completo del cliente: historial laboral, actividad económica, ingresos mensuales, gastos fijos y pasivos vigentes.
-- Consulta centralizada y verificación de antecedentes en centrales de riesgo.
-- Búsqueda y filtrado multicriterio por DNI, nombres o nivel de solvencia.
-
-### Módulo 3: Admisión y Evaluación de Créditos
-- Simulador financiero en tiempo real: cálculo inmediato de la cuota mensual mediante el método de amortización francés.
-- Evaluación de indicadores clave: Capacidad de pago admisible, relación Deuda/Ingresos (DTI) y flujo neto disponible.
-- Semáforo automático de viabilidad financiera.
-
-### Módulo 4: Análisis con Inteligencia Artificial
-- Evaluación explicativa cualitativa y cuantitativa que asigna un Score de Riesgo (0 a 100 puntos) y categoriza al cliente en:
-  - **Riesgo Bajo:** Condiciones financieras óptimas y solvencia verificada.
-  - **Riesgo Medio:** Requiere evaluación complementaria o garantías de respaldo.
-  - **Riesgo Alto:** Señales de sobreendeudamiento o déficit de liquidez.
-- Identificación estructurada de fortalezas financieras, vulnerabilidades operativas y alertas preventivas.
-- Estimación de probabilidades de incumplimiento a 30 y 90 días.
-- **Dictamen Humano Vinculante:** La IA actúa como soporte analítico para el oficial de créditos, garantizando que la decisión final sea siempre humana y conforme a políticas internas.
-
-### Módulo 5: Gestión y Prevención de Morosidad
-- Clasificación regulatoria de la cartera según directivas SBS:
-  - Categoría 0: Normal (atraso de 0 a 8 días).
-  - Categoría 1: Con Problemas Potenciales - CPP (atraso de 9 a 30 días).
-  - Categoría 2: Deficiente (atraso de 31 a 60 días).
-  - Categoría 3: Dudoso (atraso de 61 a 120 días).
-  - Categoría 4: Pérdida (atraso superior a 120 días).
-- Registro ágil de amortizaciones y cancelaciones de cuotas.
-- Generación de alertas de cobranza preventiva ante indicios de mora temprana.
-
-### Módulo 6: Centro de Reportes Financieros
-- Generación de reportes ejecutivos en formato **PDF** con membrete institucional para comités de riesgo y auditoría.
-- Exportación estructurada de cartera y vencimientos a **Excel (.xlsx)** para análisis contable y financiero.
-
----
-
-## 🧮 3. Fundamentos y Fórmulas Financieras
-
-### A. Cuota Fija Mensual (Sistema Francés)
-$$\text{Cuota} = \text{Monto} \times \frac{i \times (1+i)^n}{(1+i)^n - 1}$$
-Donde $i$ representa la Tasa Efectiva Mensual (TEM) y $n$ el plazo en meses.
-
-### B. Ratio de Endeudamiento Total (Debt-to-Income - DTI)
-$$\text{DTI} = \left( \frac{\text{Deudas Vigentes} + \text{Cuota Proyectada}}{\text{Ingresos Mensuales}} \right) \times 100$$
-- $\text{DTI} \le 35\%$: Endeudamiento prudencial y sostenible.
-- $35\% < \text{DTI} \le 50\%$: Endeudamiento moderado (alerta preventiva).
-- $\text{DTI} > 50\%$: Sobreendeudamiento crítico.
-
-### C. Capacidad de Pago Ponderada
-$$\text{Capacidad de Pago} = (\text{Ingresos} - \text{Gastos}) \times 0.85$$
-
----
-
-## 👥 4. Roles y Control de Acceso
-
-La plataforma separa las tareas y los permisos de cada perfil:
-
-- **Administrador:** Acceso a todos los módulos, supervisión de cartera, eliminación de clientes y reportes financieros para auditoría.
-- **Analista de Créditos:** Registro y actualización de clientes, simulación y creación de solicitudes, evaluación de riesgo con IA y dictamen humano. No puede eliminar clientes ni gestionar cobranzas.
-- **Personal de Cobranzas:** Seguimiento exclusivo de cuotas vencidas, registro de pagos, emisión de alertas preventivas y exportación del reporte de morosidad. No puede acceder a clientes, solicitudes de crédito, evaluaciones ni reportes generales.
-
-Al iniciar sesión, cada perfil ingresa directamente a su espacio de trabajo: el administrador y el analista al dashboard, y cobranzas al centro de morosidad. Los permisos se validan también en el servidor, no solo en el menú.
-
----
-
-## 🚀 5. Ejecución del Sistema
-
-### 1. Instalación de Dependencias
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-### 2. Iniciar la Plataforma
-```bash
+Copy-Item .env.example .env
 python app.py
 ```
-Acceder mediante el navegador web en: **http://127.0.0.1:5000**
 
----
+En local, la configuración predeterminada usa SQLite y datos ficticios. La base local se crea y se siembra automáticamente al iniciar la aplicación. Abre <http://127.0.0.1:5000>.
 
-## ⚖️ 6. Cumplimiento Normativo y Principios Éticos
+### Cuentas locales de demostración
 
-> **Declaración de Conformidad SBS:**  
-> La inteligencia artificial implementada en **Credit Risk** opera como una herramienta de apoyo analítico para los comités y funcionarios de crédito. En cumplimiento con la normativa peruana, el sistema no aprueba ni deniega solicitudes de forma automática, ni considera variables protegidas o discriminatorias. Toda decisión final sobre la concesión crediticia es emitida de forma humana por el personal autorizado.
+Estas cuentas solo están habilitadas para la demostración local (`DEMO_MODE=True`). El rol y los permisos se asignan desde la cuenta autenticada, no desde el formulario.
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Administrador | `admin@creditrisk.pe` | `admin123` |
+| Analista de créditos | `analista@creditrisk.pe` | `analista123` |
+| Personal de cobranza | `cobranzas@creditrisk.pe` | `cobranza123` |
+
+Usa únicamente los datos ficticios incluidos para pruebas y demostración. No pongas datos financieros reales en este entorno.
+
+## Supabase Auth y PostgreSQL
+
+La aplicación no cambia a SQLite silenciosamente cuando se configura PostgreSQL. En producción, verifica que las credenciales funcionen y que el esquema esté aplicado.
+
+1. Crea un proyecto en Supabase.
+2. En **SQL Editor**, ejecuta `database/schema.sql`. El esquema crea las siete tablas, índices, claves foráneas, timestamps y políticas RLS; la tabla `usuarios` enlaza cada perfil con el UUID de `auth.users`.
+3. En **Authentication > Users**, crea una cuenta por persona. Para asignarle un rol, copia el UUID de Auth e inserta el perfil asociado en `public.usuarios`:
+
+   ```sql
+   INSERT INTO public.usuarios (id, email, password_hash, nombre, rol, cargo, agencia, activo)
+   VALUES (
+       'UUID_DE_AUTH',
+       'correo-institucional',
+       NULL,
+       'Nombre del funcionario',
+       'Analista de créditos',
+       'Analista de Créditos',
+       'Sede Central',
+       TRUE
+   );
+   ```
+
+   Sustituye el UUID, correo, nombre y rol por los valores de la cuenta que creaste en Supabase Auth. Los roles válidos son `Administrador`, `Analista de créditos` y `Personal de cobranza`. La aplicación valida que el UUID y correo autenticados coincidan con el perfil activo.
+4. Copia `.env.example` a `.env` y configura:
+   - `DEMO_MODE=False`
+   - `DEMO_LOGIN_ENABLED=False`
+   - `SUPABASE_URL` y `SUPABASE_KEY` (clave pública/anon o publishable; nunca uses la `service_role` en el navegador).
+   - `DATABASE_URL` con la URI PostgreSQL de Supabase y SSL habilitado. En Render, usa el pooler recomendado por Supabase si la conexión directa no está disponible.
+   - `SECRET_KEY` con un valor aleatorio privado.
+   - `OPENAI_API_KEY` es opcional; sin ella se usa el motor heurístico.
+5. Inicia la aplicación. Al arrancar, verifica la conexión y que existan todas las tablas requeridas; si falta el esquema, muestra un error de configuración explícito.
+
+El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `DATABASE_URL` y las claves fuera del repositorio. Los permisos de la aplicación también se comprueban en Flask; RLS no sustituye esas validaciones.
+
+## Despliegue en Render
+
+1. Crea un repositorio en GitHub. Desde la carpeta del proyecto, publica el código (sin incluir `.env`, contraseñas reales ni archivos de base local):
+
+   ```powershell
+   git init
+   git add .
+   git commit -m "Preparar CAJA INTELIGENTE"
+   git branch -M main
+   git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+   git push -u origin main
+   ```
+
+   Sustituye `USUARIO/REPOSITORIO` por la dirección de tu repositorio. El `.gitignore` excluye `.env` y la base SQLite local.
+2. En Render, crea un **Blueprint** desde el repositorio para usar `render.yaml`, o crea un Web Service con:
+   - Build: `pip install -r requirements.txt`
+   - Start: `gunicorn app:app --bind 0.0.0.0:$PORT`
+3. En las variables del servicio, configura `SUPABASE_URL`, `SUPABASE_KEY` y `DATABASE_URL`. Render genera `SECRET_KEY`; comprueba que `FLASK_ENV=production`, `DEMO_MODE=False` y `DEMO_LOGIN_ENABLED=False`.
+4. Ejecuta `database/schema.sql` en Supabase antes de iniciar el servicio. Crea en Supabase Auth las cuentas de los funcionarios e inserta sus perfiles con el rol correcto.
+5. Añade `OPENAI_API_KEY` solo si deseas activar análisis con OpenAI; sin ella queda disponible el motor heurístico de respaldo.
+6. Despliega y comprueba `/health`, el login de cada rol y sus rutas permitidas.
+
+## Pruebas
+
+```powershell
+python test_app.py
+python -m compileall -q app.py routes database test_app.py
+```
+
+La suite usa la base de datos local ficticia e integra autenticación por rol, módulos, IA de respaldo y exportaciones. Las pruebas no requieren claves de Supabase ni OpenAI.
+
+## Estructura principal
+
+```text
+app.py                  Aplicación Flask y configuración de contexto
+config.py               Variables de entorno y validación de producción
+database/db.py          Acceso a SQLite local o PostgreSQL de Supabase
+database/schema.sql     Esquema PostgreSQL, índices y RLS
+database/seed_data.py   Datos ficticios para SQLite local
+routes/                 Autenticación y módulos de la plataforma
+services/               Scoring, análisis IA y reportes
+templates/              Vistas HTML/Jinja
+static/                 CSS, JavaScript e imágenes
+render.yaml             Configuración de despliegue
+```
+
+## Principios de uso de IA
+
+El análisis es de apoyo y debe basarse en información financiera relevante. No aprueba ni rechaza solicitudes automáticamente ni debe utilizar atributos protegidos o discriminatorios. La decisión final es humana.

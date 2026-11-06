@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, session
+from flask import Flask, current_app, jsonify, render_template, session
 from config import Config
 from database.db import init_db, query_db
 from routes.auth import auth_bp
@@ -13,13 +13,15 @@ from routes.reportes import reportes_bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    Config.validate()
 
-    # Inicializar base de datos con tablas y datos semilla
+    # La base local se prepara automáticamente; Supabase debe tener aplicado schema.sql.
     with app.app_context():
         try:
             init_db()
         except Exception as e:
-            print(f"[ERROR] Error al inicializar base de datos: {e}")
+            app.logger.exception("No se pudo inicializar o validar la base de datos")
+            raise RuntimeError("No se pudo inicializar o validar la base de datos.") from e
 
     # Registro de Blueprints
     app.register_blueprint(auth_bp)
@@ -30,20 +32,22 @@ def create_app():
     app.register_blueprint(morosidad_bp)
     app.register_blueprint(reportes_bp)
 
+    @app.get('/health')
+    def health():
+        query_db("SELECT 1", one=True)
+        return jsonify(status="ok"), 200
+
     # Inyección de variables globales en plantillas Jinja2
     @app.context_processor
     def inject_global_data():
-        alertas_no_leidas = 0
-        try:
-            res = query_db("SELECT COUNT(*) as cnt FROM alertas WHERE leido = 0", one=True)
-            if res:
-                alertas_no_leidas = res['cnt']
-        except Exception:
-            pass
+        res = query_db("SELECT COUNT(*) as cnt FROM alertas WHERE leido = FALSE", one=True)
+        alertas_no_leidas = res['cnt'] if res else 0
 
         return {
-            'app_name': 'Credit Risk',
+            'app_name': 'CAJA INTELIGENTE',
             'institucion': 'Caja Municipal de Ahorro y Crédito - CMAC',
+            'database_provider': 'Supabase PostgreSQL' if Config.DATABASE_URL else 'SQLite local',
+            'demo_mode': Config.DEMO_MODE,
             'current_user': {
                 'id': session.get('user_id'),
                 'nombre': session.get('user_name', 'Invitado'),
@@ -63,6 +67,7 @@ def create_app():
 
     @app.errorhandler(500)
     def internal_server_error(e):
+        current_app.logger.error("Error interno no controlado: %s", e)
         return render_template('base.html', error_code=500, error_msg='Ha ocurrido un error interno en el servidor. El equipo técnico ha sido notificado.'), 500
 
     return app
@@ -73,9 +78,8 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = Config.DEBUG
     print(f"\n" + "="*70)
-    print("  🚀 CREDIT RISK - Sistema de Evaluación de Riesgo con IA")
+    print("  CAJA INTELIGENTE - Sistema de Evaluación de Riesgo con IA")
     print("  Orientado a Cajas Municipales de Ahorro y Crédito del Perú")
     print(f"  Servidor local activo en: http://127.0.0.1:{port}")
     print("="*70 + "\n")
     app.run(host='0.0.0.0', port=port, debug=debug)
-
