@@ -241,8 +241,76 @@ def run_tests():
     assert client.get('/demo-login/invalid').status_code == 404
     print("18. [PASS] Rechazo de perfiles de demostración desconocidos")
 
+    # 19. Automatización Telegram: Reglas de riesgo bajo y medio
+    from services.telegram_service import (
+        procesar_alerta_riesgo_automatica,
+        formatear_mensaje_alerta,
+        ya_fue_notificado,
+        registrar_notificacion_en_bd
+    )
+    res_bajo = procesar_alerta_riesgo_automatica(
+        datos_evaluacion={'id': 'eval-tg-bajo', 'nivel_riesgo': 'BAJO', 'score_riesgo': 85},
+        datos_solicitud={'id': 'sol-tg-bajo', 'numero_solicitud': 'SOL-TEST-001', 'ratio_dti': 24.0},
+        datos_cliente={'id': 'cli-tg-bajo', 'codigo_cliente': 'CLI-TEST-001'}
+    )
+    assert res_bajo['alerta_emitida'] is False
+    res_medio = procesar_alerta_riesgo_automatica(
+        datos_evaluacion={'id': 'eval-tg-medio', 'nivel_riesgo': 'MEDIO', 'score_riesgo': 60},
+        datos_solicitud={'id': 'sol-tg-medio', 'numero_solicitud': 'SOL-TEST-002', 'ratio_dti': 38.0},
+        datos_cliente={'id': 'cli-tg-medio', 'codigo_cliente': 'CLI-TEST-002'}
+    )
+    assert res_medio['alerta_emitida'] is False
+    print("19. [PASS] Reglas Telegram: Riesgo Bajo y Medio no generan alertas críticas")
+
+    # 20. Formato estricto de mensaje Telegram sin PII
+    msg_alerta = formatear_mensaje_alerta(
+        codigo_cliente='CLI-2024-001',
+        numero_solicitud='SOL-2024-001',
+        nivel_riesgo='ALTO',
+        motivo='Sobreendeudamiento crítico (DTI > 50%)',
+        fecha_eval='2026-11-06 17:00:00'
+    )
+    assert '🚨 ALERTA DE RIESGO CREDITICIO' in msg_alerta
+    assert 'Código del cliente: CLI-2024-001' in msg_alerta
+    assert 'Código del crédito: SOL-2024-001' in msg_alerta
+    assert 'Nivel de riesgo: ALTO' in msg_alerta
+    assert 'DNI' not in msg_alerta and 'telefono' not in msg_alerta
+    print("20. [PASS] Formato de alerta a Telegram seguro (sin datos sensibles PII)")
+
+    # 21. Idempotencia y prevención de duplicados
+    eval_tg_id = 'eval-idemp-001'
+    sol_tg_id = 'sol-idemp-001'
+    cli_tg_id = 'cli-idemp-001'
+    registrar_notificacion_en_bd(
+        evaluacion_id=eval_tg_id,
+        solicitud_id=sol_tg_id,
+        cliente_id=cli_tg_id,
+        chat_id='12345678',
+        tipo_alerta='RIESGO_ALTO',
+        nivel_riesgo='ALTO',
+        mensaje=msg_alerta,
+        estado_envio='ENVIADO',
+        reintentos=1
+    )
+    assert ya_fue_notificado(evaluacion_id=eval_tg_id, tipo_alerta='RIESGO_ALTO') is True
+    res_idemp = procesar_alerta_riesgo_automatica(
+        datos_evaluacion={'id': eval_tg_id, 'nivel_riesgo': 'ALTO'},
+        datos_solicitud={'id': sol_tg_id, 'numero_solicitud': 'SOL-TEST-DUP', 'ratio_dti': 60.0},
+        datos_cliente={'id': cli_tg_id, 'codigo_cliente': 'CLI-TEST-DUP'}
+    )
+    assert res_idemp['alerta_emitida'] is False
+    assert 'idempotencia' in res_idemp['motivo']
+    print("21. [PASS] Idempotencia estricta en Telegram (evita duplicados)")
+
+    # 22. Auditoría en tabla notificaciones_telegram
+    notif_audit = query_db("SELECT * FROM notificaciones_telegram WHERE evaluacion_id = ?", (eval_tg_id,), one=True)
+    assert notif_audit is not None
+    assert notif_audit['estado_envio'] == 'ENVIADO'
+    assert notif_audit['nivel_riesgo'] == 'ALTO'
+    print("22. [PASS] Registro auditable en tabla notificaciones_telegram")
+
     print("\n==================================================================")
-    print("  TODAS LAS 18 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
+    print("  TODAS LAS 22 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
     print("==================================================================\n")
 
 if __name__ == '__main__':

@@ -174,6 +174,24 @@ CREATE TABLE IF NOT EXISTS historial_crediticio (
 );
 
 -- ----------------------------------------------------------------------------
+-- 8. TABLA: notificaciones_telegram
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notificaciones_telegram (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluacion_id UUID REFERENCES evaluaciones_riesgo(id) ON DELETE CASCADE,
+    solicitud_id UUID REFERENCES solicitudes_credito(id) ON DELETE CASCADE,
+    cliente_id UUID REFERENCES clientes(id) ON DELETE CASCADE,
+    chat_id VARCHAR(100) NOT NULL,
+    tipo_alerta VARCHAR(100) NOT NULL,
+    nivel_riesgo VARCHAR(20) NOT NULL,
+    mensaje TEXT NOT NULL,
+    estado_envio VARCHAR(30) NOT NULL DEFAULT 'ENVIADO',
+    reintentos INTEGER DEFAULT 0,
+    error_detalle TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ----------------------------------------------------------------------------
 -- ÍNDICES PARA ALTO RENDIMIENTO
 -- ----------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_clientes_dni ON clientes(dni);

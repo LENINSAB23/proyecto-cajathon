@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.auth import login_required, role_required
 from database.db import new_id, query_db, execute_db
@@ -96,7 +97,8 @@ def evaluar(solicitud_id):
 def procesar_ia(solicitud_id):
     """Ejecuta el análisis de IA (OpenAI o Motor Demo) y guarda la evaluación en la base de datos."""
     solicitud = query_db("""
-        SELECT s.*, c.nombres, c.apellidos, c.dni, c.edad, c.ocupacion, c.sector_economico, c.id as cliente_real_id
+        SELECT s.*, c.nombres, c.apellidos, c.dni, c.edad, c.ocupacion, c.sector_economico,
+               c.id as cliente_real_id, c.codigo_cliente
         FROM solicitudes_credito s
         JOIN clientes c ON s.cliente_id = c.id
         WHERE s.id = ?
@@ -174,6 +176,32 @@ def procesar_ia(solicitud_id):
             f"La IA identificó alto riesgo para el cliente {solicitud['nombres']} {solicitud['apellidos']} con Score {resultado['score_riesgo']}/100 y DTI {solicitud['ratio_dti']}%.",
             resultado['recomendaciones'][:200]
         ))
+
+    # ENVÍO AUTOMÁTICO A TELEGRAM: Detección y notificación automática de riesgo alto
+    try:
+        from services.telegram_service import procesar_alerta_riesgo_automatica
+        datos_eval_notif = {
+            'id': eval_id,
+            'nivel_riesgo': resultado['nivel_riesgo'],
+            'score_riesgo': resultado['score_riesgo'],
+            'senales_alerta': resultado.get('senales_alerta'),
+            'factores_negativos': resultado.get('factores_negativos'),
+            'resumen_evaluacion': resultado.get('resumen_evaluacion'),
+            'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        datos_cli_notif = {
+            'id': solicitud['cliente_id'],
+            'codigo_cliente': solicitud.get('codigo_cliente') or f"CLI-{solicitud['cliente_id'][:8]}"
+        }
+        res_tg = procesar_alerta_riesgo_automatica(
+            datos_evaluacion=datos_eval_notif,
+            datos_solicitud=solicitud,
+            datos_cliente=datos_cli_notif
+        )
+        if res_tg.get("alerta_emitida"):
+            print(f"[INFO] Alerta Telegram enviada automáticamente para solicitud {solicitud.get('numero_solicitud')}")
+    except Exception as e_tg:
+        print(f"[WARN] No se pudo procesar alerta de Telegram: {e_tg}")
 
     flash(f'Análisis de Inteligencia Artificial completado con éxito ({resultado["modelo_ia_utilizado"]}). Riesgo asignado: {resultado["nivel_riesgo"]} (Score: {resultado["score_riesgo"]}).', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))

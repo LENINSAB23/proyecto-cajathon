@@ -134,5 +134,35 @@ def crear_alerta():
         VALUES (?, ?, ?, ?, ?, ?)
     """, (alerta_id, cliente_id, tipo_alerta, severidad, mensaje, accion))
 
+    # Notificación a Telegram si la alerta es CRÍTICA
+    if severidad == 'CRITICA':
+        try:
+            from services.telegram_service import enviar_mensaje_telegram, formatear_mensaje_alerta, registrar_notificacion_en_bd, obtener_chat_id_telegram
+            cliente = query_db("SELECT codigo_cliente FROM clientes WHERE id = ?", (cliente_id,), one=True)
+            codigo_cli = cliente['codigo_cliente'] if cliente else f"CLI-{cliente_id[:8]}"
+            msg_tg = formatear_mensaje_alerta(
+                codigo_cliente=codigo_cli,
+                numero_solicitud="COBRANZA-URGENTE",
+                nivel_riesgo="ALTO",
+                motivo=mensaje,
+                fecha_eval=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            chat_id = obtener_chat_id_telegram()
+            res_envio = enviar_mensaje_telegram(msg_tg, chat_id=chat_id)
+            registrar_notificacion_en_bd(
+                evaluacion_id=None,
+                solicitud_id=None,
+                cliente_id=cliente_id,
+                chat_id=chat_id,
+                tipo_alerta="MORA_CRITICA",
+                nivel_riesgo="ALTO",
+                mensaje=msg_tg,
+                estado_envio="ENVIADO" if res_envio.get("enviado") else "FALLIDO",
+                reintentos=res_envio.get("intentos", 1),
+                error_detalle=res_envio.get("error")
+            )
+        except Exception as e_tg:
+            print(f"[WARN] Error al notificar mora crítica a Telegram: {e_tg}")
+
     flash('Alerta preventiva generada exitosamente y notificada al equipo de cobranzas.', 'success')
     return redirect(url_for('morosidad.index'))

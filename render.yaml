@@ -25,5 +25,9 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: "gemini-flash-lite-latest"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
       - key: OPENAI_API_KEY
         sync: false

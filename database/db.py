@@ -252,6 +252,21 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS notificaciones_telegram (
+        id TEXT PRIMARY KEY,
+        evaluacion_id TEXT,
+        solicitud_id TEXT,
+        cliente_id TEXT,
+        chat_id TEXT NOT NULL,
+        tipo_alerta TEXT NOT NULL,
+        nivel_riesgo TEXT NOT NULL,
+        mensaje TEXT NOT NULL,
+        estado_envio TEXT NOT NULL DEFAULT 'ENVIADO',
+        reintentos INTEGER DEFAULT 0,
+        error_detalle TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
     """)
 
     # Verificar si ya existen usuarios

@@ -126,11 +126,45 @@ La plataforma implementa un control de acceso basado en roles (RBAC) validado ta
    - `DATABASE_URL`: `postgresql://postgres.[PROYECTO]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres`
    - `GEMINI_API_KEY`: `[TU-CLAVE-DE-GEMINI]`
    - `GEMINI_MODEL`: `gemini-flash-lite-latest`
+   - `TELEGRAM_BOT_TOKEN`: `[TOKEN-DE-BOTFATHER]`
+   - `TELEGRAM_CHAT_ID`: `[TU-CHAT-ID]`
 4. Comprueba la disponibilidad en el endpoint de salud: `GET /health` &rarr; `{"status": "ok"}`.
 
 ---
 
-## 7. Marco Regulatorio y Cumplimiento SBS
+## 7. Automatización de Alertas a Telegram
+
+El sistema cuenta con un servicio desatendido de notificaciones automáticas vía **Telegram Bot API**:
+
+- **Bot de Monitoreo:** `@CreditRiskMonitor2bot` (`t.me/CreditRiskMonitor2bot`)
+- **Reglas de Notificación:**
+  - **Riesgo Bajo:** Se almacena la evaluación en Supabase sin emitir alerta a Telegram.
+  - **Riesgo Medio:** Se almacena la evaluación en Supabase sin alerta crítica a Telegram.
+  - **Riesgo Alto / Mora Crítica:** Se dispara automáticamente una alerta estructurada al canal privado de Telegram.
+- **Idempotencia y No-Duplicidad:**
+  - Cada envío se audita en la tabla `notificaciones_telegram` en Supabase.
+  - Si una solicitud o evaluación ya fue notificada con éxito, el sistema bloquea envíos duplicados.
+- **Seguridad y Privacidad Financiera:**
+  - El mensaje no contiene DNI, teléfonos, direcciones ni información financiera sensible.
+  - Estructura oficial del mensaje:
+    ```text
+    🚨 ALERTA DE RIESGO CREDITICIO
+
+    Se ha detectado un crédito que requiere atención.
+
+    Código del cliente: [IDENTIFICADOR]
+    Código del crédito: [IDENTIFICADOR]
+    Nivel de riesgo: ALTO
+    Motivo: [MOTIVO REAL DE LA EVALUACIÓN]
+    Fecha: [FECHA DE EVALUACIÓN]
+
+    ⚠️ Se recomienda revisar el caso en la plataforma.
+    ```
+- **Tolerancia a Fallos:** Hasta 3 reintentos automáticos con pausas exponenciales y registro del estado (`ENVIADO` / `FALLIDO`).
+
+---
+
+## 8. Marco Regulatorio y Cumplimiento SBS
 
 El sistema ha sido estructurado respetando los principios de la **Resolución SBS N° 11356-2008**:
 - **Categoría 0 (Normal):** Créditos al día o con mora inferior a 8 días.
