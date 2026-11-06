@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Evaluación de Riesgo IA: {{ solicitud.numero_solicitud }} - CAJA INTELIGENTE{% endblock %}
+{% block title %}Evaluación de Riesgo: {{ solicitud.numero_solicitud }} - CAJA INTELIGENTE{% endblock %}
 
 {% block content %}
 <div class="content-header">
@@ -10,7 +10,7 @@
         <i class="fa-solid fa-arrow-left me-1"></i>Regresar a Solicitudes de Crédito
       </a>
     </div>
-    <h2 class="content-title">Evaluación de Riesgo Crediticio con Inteligencia Artificial</h2>
+    <h2 class="content-title">Evaluación de Riesgo Crediticio &bull; Bank-ito IA</h2>
     <div class="content-subtitle">
       Solicitud: <strong>{{ solicitud.numero_solicitud }}</strong> &bull; Cliente: <strong>{{ solicitud.nombres }} {{ solicitud.apellidos }}</strong> (DNI: {{ solicitud.dni }})
     </div>
@@ -18,19 +18,19 @@
   <div class="d-flex gap-2">
     <form method="POST" action="{{ url_for('riesgos.procesar_ia', solicitud_id=solicitud.id) }}">
       <button type="submit" class="btn btn-fintech-primary">
-        <i class="fa-solid fa-wand-magic-sparkles me-2"></i>
-        {% if evaluacion %}Re-evaluar con IA{% else %}Ejecutar Análisis con IA{% endif %}
+        <i class="fa-solid fa-microchip me-1"></i>
+        {% if evaluacion %}Re-evaluar con Bank-ito IA{% else %}Ejecutar Análisis con Bank-ito IA{% endif %}
       </button>
     </form>
     <a href="{{ url_for('reportes.exportar_pdf', tipo='evaluaciones') }}" class="btn btn-fintech-outline">
-      <i class="fa-solid fa-file-pdf me-1"></i>Descargar PDF
+      <i class="fa-solid fa-file-pdf me-1 text-danger"></i>Descargar Dictamen PDF
     </a>
   </div>
 </div>
 
-<!-- RESUMEN DE LA SOLICITUD -->
+<!-- RESUMEN DE LA SOLICITUD (KPIs) -->
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
+  <div class="col-md-3 col-sm-6">
     <div class="kpi-card">
       <div>
         <div class="kpi-label">Monto Solicitado</div>
@@ -41,7 +41,7 @@
     </div>
   </div>
 
-  <div class="col-md-3">
+  <div class="col-md-3 col-sm-6">
     <div class="kpi-card">
       <div>
         <div class="kpi-label">Cuota Estimada</div>
@@ -52,14 +52,14 @@
     </div>
   </div>
 
-  <div class="col-md-3">
+  <div class="col-md-3 col-sm-6">
     <div class="kpi-card">
       <div>
         <div class="kpi-label">Ratio Deuda/Ingreso (DTI)</div>
         <div class="kpi-value {% if solicitud.ratio_dti > 50 %}text-danger{% elif solicitud.ratio_dti > 35 %}text-warning{% else %}text-success{% endif %}">
           {{ solicitud.ratio_dti }}%
         </div>
-        <div class="kpi-subtext text-muted">Umbral prudencial SBS: 35% - 50%</div>
+        <div class="kpi-subtext text-muted">Umbral SBS: 35% - 50%</div>
       </div>
       <div class="kpi-icon-box {% if solicitud.ratio_dti > 50 %}kpi-icon-red{% elif solicitud.ratio_dti > 35 %}kpi-icon-amber{% else %}kpi-icon-green{% endif %}">
         <i class="fa-solid fa-percent"></i>
@@ -67,7 +67,7 @@
     </div>
   </div>
 
-  <div class="col-md-3">
+  <div class="col-md-3 col-sm-6">
     <div class="kpi-card">
       <div>
         <div class="kpi-label">Flujo Libre Neto</div>
@@ -77,7 +77,7 @@
         <div class="kpi-subtext text-muted">Excedente post-cuota</div>
       </div>
       <div class="kpi-icon-box {% if solicitud.ingreso_disponible > 0 %}kpi-icon-green{% else %}kpi-icon-red{% endif %}">
-        <i class="fa-solid fa-coins"></i>
+        <i class="fa-solid fa-scale-balanced"></i>
       </div>
     </div>
   </div>
@@ -91,28 +91,28 @@
   <div class="col-lg-4">
     <div class="custom-card text-center p-4 h-100">
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <span class="badge badge-ai"><i class="fa-solid fa-brain me-1"></i>{{ evaluacion.modelo_ia_utilizado }}</span>
-        <span class="badge bg-success-subtle text-success small border"><i class="fa-solid fa-circle-check me-1"></i>Dictamen Activo</span>
+        <span class="badge badge-ai"><i class="fa-solid fa-microchip me-1"></i>{{ evaluacion.modelo_ia_utilizado }}</span>
+        <span class="badge bg-success-subtle text-success small border"><i class="fa-solid fa-check me-1"></i>Dictamen Activo</span>
       </div>
 
       <div class="my-4">
         {% if evaluacion.nivel_riesgo == 'BAJO' %}
           <div class="score-badge-circle score-low">
-            <span class="fs-1">{{ evaluacion.score_riesgo }}</span>
+            <span class="fs-1 fw-bold">{{ evaluacion.score_riesgo }}</span>
             <span class="small fw-semibold">PUNTOS</span>
           </div>
           <h4 class="fw-bold text-success mt-3 mb-1">RIESGO BAJO</h4>
-          <p class="small text-muted mb-0">Condiciones financieras altamente favorables. Apto para financiamiento.</p>
+          <p class="small text-muted mb-0">Condiciones financieras altamente favorables. Apto para colocación de crédito.</p>
         {% elif evaluacion.nivel_riesgo == 'MEDIO' %}
           <div class="score-badge-circle score-medium">
-            <span class="fs-1">{{ evaluacion.score_riesgo }}</span>
+            <span class="fs-1 fw-bold">{{ evaluacion.score_riesgo }}</span>
             <span class="small fw-semibold">PUNTOS</span>
           </div>
           <h4 class="fw-bold text-warning mt-3 mb-1">RIESGO MEDIO</h4>
-          <p class="small text-muted mb-0">Requiere revisión adicional y garantías de respaldo complementarias.</p>
+          <p class="small text-muted mb-0">Requiere revisión adicional y garantías o avales de respaldo complementarios.</p>
         {% else %}
           <div class="score-badge-circle score-high">
-            <span class="fs-1">{{ evaluacion.score_riesgo }}</span>
+            <span class="fs-1 fw-bold">{{ evaluacion.score_riesgo }}</span>
             <span class="small fw-semibold">PUNTOS</span>
           </div>
           <h4 class="fw-bold text-danger mt-3 mb-1">RIESGO ALTO</h4>
@@ -130,10 +130,12 @@
         
         <div class="mb-3">
           <div class="d-flex justify-content-between small mb-1">
-            <span>Riesgo de mora a 30 días:</span>
-            <strong>{{ evaluacion.probabilidad_morosidad_30d }}%</strong>
+            <span class="text-secondary">Riesgo de mora a 30 días:</span>
+            <strong class="{% if evaluacion.probabilidad_morosidad_30d > 40 %}text-danger{% elif evaluacion.probabilidad_morosidad_30d > 15 %}text-warning{% else %}text-success{% endif %}">
+              {{ evaluacion.probabilidad_morosidad_30d }}%
+            </strong>
           </div>
-          <div class="progress" style="height: 8px;">
+          <div class="progress" style="height: 6px; background-color: #E2E8F0;">
             <div class="progress-bar {% if evaluacion.probabilidad_morosidad_30d > 40 %}bg-danger{% elif evaluacion.probabilidad_morosidad_30d > 15 %}bg-warning{% else %}bg-success{% endif %}" 
                  style="width: {{ evaluacion.probabilidad_morosidad_30d }}%;"></div>
           </div>
@@ -141,10 +143,12 @@
 
         <div>
           <div class="d-flex justify-content-between small mb-1">
-            <span>Riesgo de mora a 90 días (Cartera Pesada):</span>
-            <strong>{{ evaluacion.probabilidad_morosidad_90d }}%</strong>
+            <span class="text-secondary">Riesgo de mora a 90 días (Cartera Pesada):</span>
+            <strong class="{% if evaluacion.probabilidad_morosidad_90d > 50 %}text-danger{% elif evaluacion.probabilidad_morosidad_90d > 25 %}bg-warning{% else %}text-success{% endif %}">
+              {{ evaluacion.probabilidad_morosidad_90d }}%
+            </strong>
           </div>
-          <div class="progress" style="height: 8px;">
+          <div class="progress" style="height: 6px; background-color: #E2E8F0;">
             <div class="progress-bar {% if evaluacion.probabilidad_morosidad_90d > 50 %}bg-danger{% elif evaluacion.probabilidad_morosidad_90d > 25 %}bg-warning{% else %}bg-success{% endif %}" 
                  style="width: {{ evaluacion.probabilidad_morosidad_90d }}%;"></div>
           </div>
@@ -158,15 +162,15 @@
     <div class="custom-card p-4 h-100">
       <div class="card-header-custom border-bottom pb-3 mb-3 p-0">
         <h5 class="card-header-title">
-          <i class="fa-solid fa-magnifying-glass-chart text-primary"></i>
-          Dictamen Explicativo del Motor de Inteligencia Artificial
+          <i class="fa-solid fa-file-contract text-primary"></i>
+          Dictamen Explicativo de Inteligencia Artificial (Bank-ito)
         </h5>
         <span class="small text-muted">Evaluado el: {{ evaluacion.created_at[:19] }}</span>
       </div>
 
       <!-- Resumen explicativo -->
       <div class="p-3 bg-light rounded border mb-4">
-        <h6 class="fw-bold text-navy mb-2"><i class="fa-solid fa-file-waveform text-info me-1"></i>Resumen Técnico Ejecutivo</h6>
+        <h6 class="fw-bold text-navy mb-2"><i class="fa-solid fa-file-lines text-primary me-1"></i>Resumen Técnico Ejecutivo</h6>
         <p class="mb-0 text-secondary" style="line-height: 1.6;">{{ evaluacion.resumen_evaluacion }}</p>
       </div>
 
@@ -176,7 +180,7 @@
         <div class="col-md-6">
           <div class="p-3 rounded border border-success-subtle bg-success-subtle h-100">
             <h6 class="fw-bold text-success mb-2">
-              <i class="fa-solid fa-circle-check me-1"></i>Factores Positivos y Fortalezas
+              <i class="fa-solid fa-circle-check me-1"></i>Fortalezas y Factores Favorables
             </h6>
             <ul class="mb-0 ps-3 small text-secondary">
               {% for f in factores_pos %}
@@ -192,7 +196,7 @@
         <div class="col-md-6">
           <div class="p-3 rounded border border-danger-subtle bg-danger-subtle h-100">
             <h6 class="fw-bold text-danger mb-2">
-              <i class="fa-solid fa-circle-xmark me-1"></i>Factores Negativos y Vulnerabilidades
+              <i class="fa-solid fa-circle-exclamation me-1"></i>Vulnerabilidades y Factores de Riesgo
             </h6>
             <ul class="mb-0 ps-3 small text-secondary">
               {% for f in factores_neg %}
@@ -220,7 +224,7 @@
       {% endif %}
 
       <!-- Recomendaciones para el Analista -->
-      <div class="p-3 rounded border border-primary-subtle bg-primary-subtle">
+      <div class="p-3 rounded border" style="background-color: #F0F9FF; border-color: #BAE6FD;">
         <h6 class="fw-bold text-primary mb-2">
           <i class="fa-solid fa-lightbulb text-warning me-1"></i>Recomendaciones Prácticas para el Analista de Créditos
         </h6>
@@ -240,7 +244,7 @@
         Dictamen Humano y Resolución del Comité de Créditos
       </h5>
       <small class="text-muted">
-        Conforme a la regulación SBS, la Inteligencia Artificial actúa exclusivamente como soporte analítico. La decisión crediticia final es de exclusiva responsabilidad humana.
+        Conforme a la regulación SBS, la Inteligencia Artificial actúa exclusivamente como soporte analítico explicativo. La decisión crediticia final es de exclusiva responsabilidad del comité humano.
       </small>
     </div>
     <div>
@@ -256,13 +260,13 @@
         <label class="form-label-fintech">Dictamen de la Resolución *</label>
         <select name="dictamen_humano" class="form-select form-select-fintech" required>
           <option value="CONFORME" {% if evaluacion.dictamen_humano == 'CONFORME' %}selected{% endif %}>
-            ✅ CONFORME (Aprobar Crédito)
+            CONFORME (Aprobar Crédito)
           </option>
           <option value="REQUIERE_GARANTIA" {% if evaluacion.dictamen_humano == 'REQUIERE_GARANTIA' %}selected{% endif %}>
-            ⚠️ OBSERVAR (Requiere Aval Solidario o Garantía)
+            OBSERVAR (Requiere Aval Solidario o Garantía)
           </option>
           <option value="DENEGADO" {% if evaluacion.dictamen_humano == 'DENEGADO' %}selected{% endif %}>
-            ❌ DENEGADO (Rechazar Solicitud)
+            DENEGADO (Rechazar Solicitud)
           </option>
         </select>
       </div>
@@ -287,14 +291,16 @@
 <!-- SI NO TIENE EVALUACIÓN AÚN -->
 <div class="custom-card p-5 text-center">
   <div class="py-4">
-    <i class="fa-solid fa-wand-magic-sparkles text-primary fs-1 mb-3"></i>
+    <div class="kpi-icon-box kpi-icon-blue mx-auto mb-3" style="width: 54px; height: 54px; font-size: 1.5rem;">
+      <i class="fa-solid fa-microchip"></i>
+    </div>
     <h4 class="fw-bold text-navy">Esta solicitud aún no ha sido procesada con Inteligencia Artificial</h4>
     <p class="text-muted mx-auto" style="max-width: 560px;">
-      Haga clic en el botón a continuación para evaluar la capacidad de pago, ratio DTI, factores explicativos y probabilidades de morosidad mediante los modelos de OpenAI y algoritmos SBS.
+      Inicie la evaluación para calcular capacidad de pago, ratio DTI, factores explicativos y probabilidades de morosidad mediante Bank-ito IA y algoritmos regulatorios SBS.
     </p>
     <form method="POST" action="{{ url_for('riesgos.procesar_ia', solicitud_id=solicitud.id) }}" class="mt-4">
       <button type="submit" class="btn btn-fintech-primary py-2 px-4 fs-6">
-        <i class="fa-solid fa-brain me-2"></i>Iniciar Análisis de Riesgo con IA
+        <i class="fa-solid fa-microchip me-2"></i>Iniciar Análisis con Bank-ito IA
       </button>
     </form>
   </div>

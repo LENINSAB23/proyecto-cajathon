@@ -94,8 +94,8 @@
           </td>
           <td>
             {% if s.score_riesgo %}
-              <span class="badge bg-light text-dark border fw-bold">
-                <i class="fa-solid fa-brain text-info me-1"></i>{{ s.score_riesgo }}/100
+              <span class="badge bg-light text-dark border fw-semibold">
+                <i class="fa-solid fa-microchip text-primary me-1"></i>{{ s.score_riesgo }}/100
               </span>
             {% else %}
               <span class="text-muted small">Sin procesar</span>
@@ -103,20 +103,20 @@
           </td>
           <td>
             {% if s.estado == 'APROBADO' %}
-              <span class="badge bg-success-subtle text-success fw-bold">Aprobado</span>
+              <span class="badge bg-success-subtle text-success fw-semibold">Aprobado</span>
             {% elif s.estado == 'RECHAZADO' %}
-              <span class="badge bg-danger-subtle text-danger fw-bold">Rechazado</span>
+              <span class="badge bg-danger-subtle text-danger fw-semibold">Rechazado</span>
             {% elif s.estado == 'OBSERVADO' %}
-              <span class="badge bg-warning-subtle text-warning fw-bold">Observado</span>
+              <span class="badge bg-warning-subtle text-warning fw-semibold">Observado</span>
             {% elif s.estado == 'EVALUADO' %}
-              <span class="badge bg-info-subtle text-info fw-bold">Evaluado IA</span>
+              <span class="badge bg-primary-subtle text-primary fw-semibold">Evaluado</span>
             {% else %}
-              <span class="badge bg-secondary-subtle text-secondary fw-bold">Pendiente</span>
+              <span class="badge bg-secondary-subtle text-secondary fw-semibold">Pendiente</span>
             {% endif %}
           </td>
           <td class="text-end">
             <a href="{{ url_for('riesgos.evaluar', solicitud_id=s.id) }}" class="btn btn-sm btn-fintech-primary py-1 px-3">
-              <i class="fa-solid fa-microchip me-1"></i>Dictamen IA
+              <i class="fa-solid fa-microchip me-1"></i>Dictamen Bank-ito
             </a>
           </td>
         </tr>
@@ -291,9 +291,9 @@
                 </div>
 
                 <div class="mt-4 text-center">
-                  <small class="text-secondary d-block mb-2">Al registrar la solicitud, se habilitará la evaluación con IA (OpenAI / Motor Heurístico).</small>
+                  <small class="text-secondary d-block mb-2">Al registrar la solicitud, se habilitará la evaluación crediticia con Bank-ito IA.</small>
                   <button type="submit" class="btn btn-fintech-primary w-100 py-2 fs-6">
-                    <i class="fa-solid fa-file-check me-2"></i>Registrar y Evaluar con IA &rarr;
+                    <i class="fa-solid fa-microchip me-2"></i>Registrar y Evaluar con Bank-ito IA &rarr;
                   </button>
                 </div>
               </div>

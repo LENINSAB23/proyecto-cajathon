@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Iniciar Sesión - CAJA INTELIGENTE</title>
+  <title>Acceso Seguro - CAJA INTELIGENTE</title>
   
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,40 +15,32 @@
   
   <style>
     body {
-      background: linear-gradient(135deg, #070D1F 0%, #0B132B 50%, #1C2541 100%);
+      background-color: #0A192F;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
+      font-family: 'Inter', sans-serif;
     }
     .login-box {
       width: 100%;
-      max-width: 440px;
+      max-width: 420px;
       background: #FFFFFF;
-      border-radius: 16px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      border-radius: 10px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .login-header {
-      background-color: #0B132B;
-      padding: 2.25rem 2rem 1.75rem 2rem;
+      background-color: #070D1A;
+      padding: 2rem 2rem 1.5rem 2rem;
       text-align: center;
       color: #FFFFFF;
-      position: relative;
-    }
-    .login-header::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #0284C7 0%, #10B981 50%, #F59E0B 100%);
+      border-bottom: 2px solid #0284C7;
     }
     .login-body {
-      padding: 2.25rem 2rem;
+      padding: 2rem 2rem;
     }
   </style>
 </head>
@@ -56,10 +48,10 @@
 
 <div class="login-box">
   <div class="login-header">
-    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="CAJA INTELIGENTE" class="mb-2" style="width: 52px; height: 52px;">
-    <h3 class="fw-bold mb-1 tracking-tight">CAJA INTELIGENTE</h3>
-    <p class="small text-info mb-0">Sistema de Evaluación de Riesgo Crediticio</p>
-    <span class="badge bg-secondary-subtle text-light small mt-2" style="font-size: 0.72rem;">CMAC Perú &bull; Gestión Financiera de Riesgos</span>
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="CAJA INTELIGENTE" class="mb-2" style="width: 44px; height: 44px;">
+    <h4 class="fw-bold mb-1 tracking-tight">CAJA INTELIGENTE</h4>
+    <p class="small text-secondary mb-0" style="color: #94A3B8 !important;">Sistema de Evaluación de Riesgo Crediticio</p>
+    <span class="badge bg-light text-dark small mt-2" style="font-size: 0.7rem; border: 1px solid #CBD5E1;">CMAC Perú &bull; Gestión Financiera de Riesgos</span>
   </div>
 
   <div class="login-body">
@@ -98,18 +90,18 @@
     </form>
 
     {% if config.DEMO_LOGIN_ENABLED %}
-    <div class="small mt-4 p-3 rounded bg-light border">
-      <div class="fw-bold text-navy mb-2">Cuentas de demostración</div>
-      <div><strong>Administrador:</strong> admin@creditrisk.pe / admin123</div>
-      <div><strong>Analista:</strong> analista@creditrisk.pe / analista123</div>
-      <div><strong>Cobranzas:</strong> cobranzas@creditrisk.pe / cobranza123</div>
-      <div class="text-muted mt-2">Datos ficticios para pruebas locales.</div>
+    <div class="small mt-4 p-3 rounded bg-light border" style="font-size: 0.78rem;">
+      <div class="fw-bold text-navy mb-2"><i class="fa-solid fa-users me-1 text-primary"></i>Cuentas de demostración</div>
+      <div class="mb-1"><strong>Administrador:</strong> admin@creditrisk.pe / admin123</div>
+      <div class="mb-1"><strong>Analista:</strong> analista@creditrisk.pe / analista123</div>
+      <div class="mb-1"><strong>Cobranzas:</strong> cobranzas@creditrisk.pe / cobranza123</div>
+      <div class="text-muted mt-2">Datos ficticios para pruebas locales. Asistencia de Bank-ito IA habilitada.</div>
     </div>
     {% endif %}
 
-    <div class="text-center mt-4 pt-2 border-top">
-      <small class="text-muted" style="font-size: 0.78rem;">
-        <i class="fa-solid fa-shield-halved text-success me-1"></i>Tu rol y tus permisos se asignan según tu cuenta institucional
+    <div class="text-center mt-3 pt-2 border-top">
+      <small class="text-muted" style="font-size: 0.75rem;">
+        <i class="fa-solid fa-shield-halved text-success me-1"></i>Acceso cifrado conforme a políticas de ciberseguridad SBS
       </small>
     </div>
   </div>

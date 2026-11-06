@@ -21,5 +21,9 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-flash-lite-latest"
       - key: OPENAI_API_KEY
         sync: false

@@ -207,3 +207,23 @@ def dictamen_humano(solicitud_id):
 
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
+
+@riesgos_bp.route('/bank-ito/chat', methods=['POST'])
+@login_required
+def bankito_chat():
+    """Endpoint interactivo para conversar con Bank-ito Copilot."""
+    from services.ia_service import consultar_bankito_copilot
+    data = request.get_json(silent=True) or {}
+    pregunta = data.get('mensaje', '').strip()
+    contexto = data.get('contexto', {})
+    
+    if not pregunta:
+        return jsonify({'success': False, 'error': 'Mensaje vacío'}), 400
+        
+    respuesta = consultar_bankito_copilot(pregunta, contexto=contexto)
+    return jsonify({
+        'success': True,
+        'respuesta': respuesta,
+        'autor': 'Bank-ito Copilot',
+        'modelo': 'Google Gemini / SBS AI'
+    })
