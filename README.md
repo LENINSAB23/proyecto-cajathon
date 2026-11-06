@@ -1,19 +1,16 @@
-# CAJA INTELIGENTE
+# CAJA INTELIGENTE &bull; Sistema de Riesgo Crediticio con Bank-ito IA
 
-Sistema web de demostración para evaluación de riesgo crediticio y prevención de morosidad en Cajas Municipales de Ahorro y Crédito del Perú. La IA brinda recomendaciones explicables; el dictamen final siempre corresponde a una persona autorizada.
+Plataforma Fintech SaaS empresarial diseñada para la prevención, identificación y evaluación de riesgos crediticios en Cajas Municipales de Ahorro y Crédito (CMAC) del Perú. Integra a **Bank-ito**, copiloto y asesor de Inteligencia Artificial potenciado por la API de **Google Gemini**, garantizando evaluaciones explicables bajo la normativa regulatoria SBS (Res. N° 11356-2008).
 
-## Funcionalidades
+## Características Principales
 
-- Dashboard con indicadores de clientes, solicitudes, aprobaciones, riesgo y morosidad.
-- Gestión y búsqueda de clientes, perfil financiero e historial crediticio.
-- Registro y simulación de solicitudes de crédito: cuota francesa, capacidad de pago, DTI e ingreso disponible.
-- Evaluación de riesgo con OpenAI y motor heurístico de respaldo (sin conexión externa).
-- Gestión de pagos, cuotas atrasadas, alertas preventivas y clasificación SBS.
-- Reportes de evaluaciones, solicitudes, clientes de riesgo alto y morosidad en PDF y Excel.
-- Roles separados, validados en las rutas del servidor:
-  - **Administrador:** acceso a todos los módulos, eliminación de clientes y reportes.
-  - **Analista de créditos:** clientes, solicitudes y evaluaciones; no gestiona cobranzas ni elimina clientes.
-  - **Personal de cobranza:** morosidad, registro de pagos, alertas y reporte de morosidad.
+- **Dashboard Financiero Integral:** Monitoreo en tiempo real de colocaciones, solicitudes, cuotas en mora, distribución de riesgo y alertas preventivas.
+- **Bank-ito Copilot IA (Google Gemini):** Asistente financiero inteligente integrado en el drawer lateral y en la evaluación técnica de solicitudes (Score 0-100, fortalezas, factores de riesgo, alertas rojas y probabilidades de morosidad a 30 y 90 días).
+- **Simulador de Crédito en Tiempo Real:** Cálculo dinámico con sistema francés de amortización, evaluación de capacidad de pago mensual y ratio de endeudamiento DTI (*Debt-to-Income*).
+- **Gestión 360° de Clientes & Centrales de Riesgo:** Historial crediticio unificado, expediente financiero y clasificación regulatoria SBS.
+- **Centro de Cobranzas y Morosidad:** Detección de mora temprana (1-8 días), seguimiento de cartera pesada (>30 días) y contacto prioritario de deudores.
+- **Reportes Financieros Auditables:** Exportación oficial en formato PDF con membrete institucional y hojas de cálculo Excel bancario (.xlsx).
+- **Diseño Fintech SaaS Profesional:** Estética de software financiero corporativo (azul marino `#0A192F`, azul petróleo `#0284C7`, grises neutros y semáforos de riesgo SBS sin adornos superfluos).
 
 ## Tecnologías
 
