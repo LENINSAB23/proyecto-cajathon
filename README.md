@@ -75,6 +75,13 @@ La aplicación no cambia a SQLite silenciosamente cuando se configura PostgreSQL
 
 El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `DATABASE_URL` y las claves fuera del repositorio. Los permisos de la aplicación también se comprueban en Flask; RLS no sustituye esas validaciones.
 
+### Si el inicio de sesión falla en producción
+
+- Usa el correo y la contraseña de una cuenta creada en **Supabase Authentication > Users**. Las cuentas `admin@creditrisk.pe`, `analista@creditrisk.pe` y `cobranzas@creditrisk.pe` son exclusivamente para SQLite local y no se crean en la base de producción.
+- Confirma que el correo de Supabase esté verificado y que el perfil en `public.usuarios` tenga el mismo UUID y correo, además de `activo = TRUE`.
+- Si Supabase acepta las credenciales pero falta el perfil, el login indicará que el administrador debe vincular la cuenta. Usa la consulta SQL del paso 3 para hacerlo.
+- En Render, verifica `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`, `DEMO_MODE=False` y `DEMO_LOGIN_ENABLED=False`. La aplicación ahora falla al arrancar si falta la configuración de Supabase Auth en producción, en vez de aceptar credenciales que no puede validar.
+
 ## Despliegue en Render
 
 1. Crea un repositorio en GitHub. Desde la carpeta del proyecto, publica el código (sin incluir `.env`, contraseñas reales ni archivos de base local):

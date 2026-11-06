@@ -74,6 +74,11 @@ class Config:
             if not cls.DATABASE_URL:
                 raise RuntimeError("DATABASE_URL es obligatorio en producción.")
             if not cls.SUPABASE_URL or not cls.SUPABASE_KEY:
-                print("[WARN] SUPABASE_URL o SUPABASE_KEY no definidos en Render. Configúralos en Render -> Environment para activar Supabase Auth.")
+                raise RuntimeError(
+                    "SUPABASE_URL y SUPABASE_KEY son obligatorios en producción "
+                    "para autenticar cuentas con Supabase Auth."
+                )
+            if not cls.USE_SUPABASE_AUTH:
+                raise RuntimeError("Supabase Auth debe estar habilitado en producción.")
         if cls.USE_SUPABASE_AUTH and not cls.DATABASE_URL:
             raise RuntimeError("DATABASE_URL es obligatorio cuando se usa Supabase Auth.")

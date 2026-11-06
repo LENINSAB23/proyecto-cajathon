@@ -9,6 +9,11 @@ from config import Config
 
 auth_bp = Blueprint('auth', __name__)
 
+
+class UserProfileNotConfigured(Exception):
+    """Raised when an authenticated Supabase user has no active application profile."""
+
+
 ROLE_HOME_ENDPOINTS = {
     'Administrador': 'dashboard.index',
     'Analista de créditos': 'dashboard.index',
@@ -70,7 +75,7 @@ def authenticate_user(email, password):
         )
         if user and user['email'].strip().lower() == auth_user.email.strip().lower():
             return user
-        return None
+        raise UserProfileNotConfigured
 
     user = query_db(
         "SELECT * FROM usuarios WHERE email = ? AND activo = TRUE",
@@ -92,10 +97,20 @@ def login():
 
         try:
             user = authenticate_user(email, password)
+        except UserProfileNotConfigured:
+            current_app.logger.warning(
+                "Supabase authenticated a user without a matching active application profile."
+            )
+            flash(
+                'La cuenta de Supabase es válida, pero no tiene un perfil activo en la aplicación. '
+                'Solicita al administrador que vincule tu UUID de Supabase en public.usuarios.',
+                'warning'
+            )
+            return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
         except (HTTPError, AuthError):
             current_app.logger.exception("No se pudo validar la cuenta de inicio de sesión")
             flash('No se pudo validar el acceso en este momento. Inténtelo nuevamente.', 'danger')
-            return render_template('login.html')
+            return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
 
         if user:
             session.clear()
@@ -123,7 +138,7 @@ def login():
         else:
             flash('Correo electrónico o contraseña incorrectos.', 'danger')
 
-    return render_template('login.html')
+    return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
 
 @auth_bp.route('/demo-login/<role>')
 def demo_login(role):

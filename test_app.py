@@ -4,7 +4,7 @@ from unittest.mock import patch
 from werkzeug.security import check_password_hash
 from database.db import new_id, query_db
 from config import Config
-from routes.auth import authenticate_user
+from routes.auth import UserProfileNotConfigured, authenticate_user
 from supabase import AuthError
 from datetime import date, timedelta
 import sqlite3
@@ -95,6 +95,35 @@ def run_tests():
                 authenticated_profile = authenticate_user('analista@creditrisk.pe', 'supabase-password')
     assert authenticated_profile['rol'] == 'Analista de créditos'
     assert profile_lookup.call_args.args[1] == (supabase_profile['id'],)
+    with patch.object(Config, 'USE_SUPABASE_AUTH', True):
+        with patch('routes.auth.get_supabase', return_value=supabase_auth):
+            with patch('routes.auth.query_db', return_value=None):
+                try:
+                    authenticate_user('analista@creditrisk.pe', 'supabase-password')
+                    raise AssertionError("El perfil Supabase faltante debió reportarse.")
+                except UserProfileNotConfigured:
+                    pass
+    profile_missing_client = app.test_client()
+    with patch('routes.auth.authenticate_user', side_effect=UserProfileNotConfigured):
+        profile_error = profile_missing_client.post('/login', data={
+            'email': 'analista@creditrisk.pe',
+            'password': 'supabase-password'
+        })
+    assert profile_error.status_code == 200
+    assert b'no tiene un perfil activo en la aplicaci' in profile_error.data
+    with patch.dict('os.environ', {'SECRET_KEY': 'production-test-secret'}):
+        with patch.object(Config, 'ENV', 'production'), \
+             patch.object(Config, 'DEBUG', False), \
+             patch.object(Config, 'DEMO_MODE', False), \
+             patch.object(Config, 'DEMO_LOGIN_ENABLED', False), \
+             patch.object(Config, 'DATABASE_URL', 'postgresql://test'), \
+             patch.object(Config, 'SUPABASE_URL', ''), \
+             patch.object(Config, 'SUPABASE_KEY', ''):
+            try:
+                Config.validate()
+                raise AssertionError("Producción debe requerir credenciales de Supabase Auth.")
+            except RuntimeError as error:
+                assert 'SUPABASE_URL y SUPABASE_KEY' in str(error)
     auth_error = AuthError('Invalid login credentials', 'invalid_credentials')
     auth_error.status = 400
     failing_auth = SimpleNamespace(
@@ -108,6 +137,7 @@ def run_tests():
                 assert authenticate_user('analista@creditrisk.pe', 'wrong-password') is None
                 profile_lookup.assert_not_called()
     print("1a. [PASS] Supabase Auth vincula el UID autenticado al perfil y su rol")
+    print("1aa. [PASS] Perfil Supabase faltante informa cómo corregir el vínculo")
     test_postgres_query_adapter()
     print("1b. [PASS] Adaptación de consultas y UUIDs compatibles con PostgreSQL")
 
