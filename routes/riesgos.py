@@ -9,6 +9,7 @@ riesgos_bp = Blueprint('riesgos', __name__, url_prefix='/riesgos')
 
 @riesgos_bp.route('/')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def index():
     """Matriz de Riesgo y Cartera Evaluada."""
     filtro_nivel = request.args.get('nivel', '').strip()
@@ -47,6 +48,7 @@ def index():
 
 @riesgos_bp.route('/evaluar/<solicitud_id>')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def evaluar(solicitud_id):
     """Página de evaluación con IA para una solicitud específica."""
     solicitud = query_db("""
@@ -201,4 +203,3 @@ def dictamen_humano(solicitud_id):
 
     flash(f'Dictamen humano registrado con éxito: Solicitud actualizada a estado {nuevo_estado}.', 'success')
     return redirect(url_for('riesgos.evaluar', solicitud_id=solicitud_id))
-

@@ -14,6 +14,7 @@ creditos_bp = Blueprint('creditos', __name__, url_prefix='/creditos')
 
 @creditos_bp.route('/')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def index():
     estado_filtro = request.args.get('estado', '').strip()
     q = request.args.get('q', '').strip()
@@ -51,6 +52,7 @@ def index():
 
 @creditos_bp.route('/simular', methods=['POST'])
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def simular():
     """API para la calculadora interactiva de crédito en tiempo real."""
     data = request.get_json() or {}
@@ -142,4 +144,3 @@ def crear():
     except Exception as e:
         flash(f'Error al crear solicitud: {str(e)}', 'danger')
         return redirect(url_for('creditos.index'))
-

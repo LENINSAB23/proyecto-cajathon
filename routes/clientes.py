@@ -8,6 +8,7 @@ clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
 
 @clientes_bp.route('/')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def index():
     q = request.args.get('q', '').strip()
     nivel_filtro = request.args.get('nivel', '').strip()
@@ -93,6 +94,7 @@ def crear():
 
 @clientes_bp.route('/<id>/detalle')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def detalle(id):
     cliente = query_db("SELECT * FROM clientes WHERE id = ?", (id,), one=True)
     if not cliente:
@@ -174,4 +176,3 @@ def eliminar(id):
     else:
         flash('Cliente no encontrado.', 'warning')
     return redirect(url_for('clientes.index'))
-

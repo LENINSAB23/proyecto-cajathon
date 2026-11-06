@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, jsonify
-from routes.auth import login_required
+from routes.auth import login_required, role_required
 from database.db import query_db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -7,6 +7,7 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('/')
 @dashboard_bp.route('/dashboard')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def index():
     # 1. Total clientes registrados
     total_clientes = query_db("SELECT COUNT(*) as total FROM clientes WHERE activo = 1", one=True)['total']
@@ -83,6 +84,7 @@ def index():
 
 @dashboard_bp.route('/api/dashboard/chart-data')
 @login_required
+@role_required('Administrador', 'Analista de créditos')
 def chart_data():
     """Endpoint JSON para alimentar los gráficos de Chart.js con datos dinámicos."""
     # Distribución de Riesgos
@@ -107,4 +109,3 @@ def chart_data():
             'aprobado': montos_aprobados
         }
     })
-

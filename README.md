@@ -76,11 +76,13 @@ $$\text{Capacidad de Pago} = (\text{Ingresos} - \text{Gastos}) \times 0.85$$
 
 ## 👥 4. Roles y Control de Acceso
 
-La plataforma cuenta con separación de funciones por perfiles de usuario:
+La plataforma separa las tareas y los permisos de cada perfil:
 
-- **Administrador:** Supervisión global de la cartera, auditoría, configuración de políticas y gestión de usuarios.
-- **Analista de Créditos:** Registro de clientes, simulación de condiciones y solicitud de dictámenes con inteligencia artificial.
-- **Personal de Cobranzas:** Seguimiento de cartera vencida, registro de abonos y emisión de requerimientos de pago.
+- **Administrador:** Acceso a todos los módulos, supervisión de cartera, eliminación de clientes y reportes financieros para auditoría.
+- **Analista de Créditos:** Registro y actualización de clientes, simulación y creación de solicitudes, evaluación de riesgo con IA y dictamen humano. No puede eliminar clientes ni gestionar cobranzas.
+- **Personal de Cobranzas:** Seguimiento exclusivo de cuotas vencidas, registro de pagos, emisión de alertas preventivas y exportación del reporte de morosidad. No puede acceder a clientes, solicitudes de crédito, evaluaciones ni reportes generales.
+
+Al iniciar sesión, cada perfil ingresa directamente a su espacio de trabajo: el administrador y el analista al dashboard, y cobranzas al centro de morosidad. Los permisos se validan también en el servidor, no solo en el menú.
 
 ---
 

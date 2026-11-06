@@ -9,6 +9,7 @@ morosidad_bp = Blueprint('morosidad', __name__, url_prefix='/morosidad')
 
 @morosidad_bp.route('/')
 @login_required
+@role_required('Administrador', 'Personal de cobranza')
 def index():
     estado_filtro = request.args.get('estado', '').strip()
     nivel_filtro = request.args.get('clasificacion', '').strip()
@@ -82,7 +83,7 @@ def index():
 
 @morosidad_bp.route('/registrar-pago/<pago_id>', methods=['POST'])
 @login_required
-@role_required('Administrador', 'Personal de cobranza', 'Analista de créditos')
+@role_required('Administrador', 'Personal de cobranza')
 def registrar_pago(pago_id):
     """Registra la cancelación de una cuota vencida o pendiente."""
     metodo = request.form.get('metodo_pago', 'Ventanilla Caja')
@@ -110,7 +111,7 @@ def registrar_pago(pago_id):
 
 @morosidad_bp.route('/crear-alerta-preventiva', methods=['POST'])
 @login_required
-@role_required('Administrador', 'Personal de cobranza', 'Analista de créditos')
+@role_required('Administrador', 'Personal de cobranza')
 def crear_alerta():
     """Genera una alerta preventiva de cobranza para un cliente específico."""
     cliente_id = request.form.get('cliente_id')
@@ -131,4 +132,3 @@ def crear_alerta():
 
     flash('Alerta preventiva generada exitosamente y notificada al equipo de cobranzas.', 'success')
     return redirect(url_for('morosidad.index'))
-

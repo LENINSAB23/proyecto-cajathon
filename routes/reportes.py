@@ -1,13 +1,18 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for
-from routes.auth import login_required
+from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for, session, abort
+from routes.auth import login_required, role_required
 from database.db import query_db
 from services.report_service import generar_excel_reporte, generar_pdf_reporte
 
 reportes_bp = Blueprint('reportes', __name__, url_prefix='/reportes')
 
+def validar_acceso_reporte(tipo):
+    if session.get('user_role') != 'Administrador' and tipo != 'morosidad':
+        abort(403)
+
 @reportes_bp.route('/')
 @login_required
+@role_required('Administrador')
 def index():
     # Estadísticas para el panel de reportes
     total_clientes = query_db("SELECT COUNT(*) as cnt FROM clientes", one=True)['cnt']
@@ -63,6 +68,10 @@ def obtener_datos_reporte(tipo: str):
         }
 
     elif tipo == 'riesgo_alto':
+        promedio_riesgo = query_db(
+            "SELECT AVG(score_interno) as a FROM clientes WHERE nivel_riesgo = 'ALTO'",
+            one=True
+        )['a'] or 0
         sql = """
             SELECT c.codigo_cliente, c.nombres || ' ' || c.apellidos as cliente, c.dni,
                    c.ocupacion, c.ingresos_mensuales, c.gastos_mensuales, c.deudas_actuales,
@@ -74,12 +83,16 @@ def obtener_datos_reporte(tipo: str):
         titulo = "Reporte de Clientes en Cartera con Riesgo Alto"
         kpis = {
             "Total Clientes Críticos": str(query_db("SELECT COUNT(*) as cnt FROM clientes WHERE nivel_riesgo='ALTO'", one=True)['cnt']),
-            "Promedio Score Riesgo": f"{query_db('SELECT AVG(score_interno) as a FROM clientes WHERE nivel_riesgo=\"ALTO\"', one=True)['a'] or 0:.1f} pts",
+            "Promedio Score Riesgo": f"{promedio_riesgo:.1f} pts",
             "Clasificación SBS": "CPP / Deficiente / Pérdida",
             "Acción Requerida": "Seguimiento Diario y Garantías"
         }
 
     elif tipo == 'morosidad':
+        monto_total_vencido = query_db(
+            "SELECT SUM(monto_cuota + penalidad) as s FROM pagos WHERE estado_pago IN ('EN_MORA', 'VENCIDO')",
+            one=True
+        )['s'] or 0
         sql = """
             SELECT p.fecha_vencimiento, s.numero_solicitud, c.codigo_cliente,
                    c.nombres || ' ' || c.apellidos as cliente, c.telefono,
@@ -96,7 +109,7 @@ def obtener_datos_reporte(tipo: str):
         kpis = {
             "Cuotas en Mora": str(query_db("SELECT COUNT(*) as cnt FROM pagos WHERE estado_pago='EN_MORA'", one=True)['cnt']),
             "Mora Mayor a 30 días": str(query_db("SELECT COUNT(*) as cnt FROM pagos WHERE dias_atraso > 30", one=True)['cnt']),
-            "Monto Total Vencido": f"S/. {query_db('SELECT SUM(monto_cuota + penalidad) as s FROM pagos WHERE estado_pago IN (\"EN_MORA\", \"VENCIDO\")', one=True)['s'] or 0:,.2f}",
+            "Monto Total Vencido": f"S/. {monto_total_vencido:,.2f}",
             "Riesgo Sistémico": "Monitoreo Preventivo Activo"
         }
 
@@ -126,8 +139,10 @@ def obtener_datos_reporte(tipo: str):
 
 @reportes_bp.route('/exportar/excel')
 @login_required
+@role_required('Administrador', 'Personal de cobranza')
 def exportar_excel():
     tipo = request.args.get('tipo', 'evaluaciones')
+    validar_acceso_reporte(tipo)
     datos, titulo, _ = obtener_datos_reporte(tipo)
     
     excel_stream = generar_excel_reporte(titulo, datos)
@@ -143,8 +158,10 @@ def exportar_excel():
 
 @reportes_bp.route('/exportar/pdf')
 @login_required
+@role_required('Administrador', 'Personal de cobranza')
 def exportar_pdf():
     tipo = request.args.get('tipo', 'evaluaciones')
+    validar_acceso_reporte(tipo)
     datos, titulo, kpis = obtener_datos_reporte(tipo)
     
     pdf_stream = generar_pdf_reporte(titulo, datos, kpis)
@@ -157,4 +174,3 @@ def exportar_pdf():
         as_attachment=True,
         download_name=filename
     )
-

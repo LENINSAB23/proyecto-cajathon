@@ -114,9 +114,11 @@
               <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ cli.id }}" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ cli.id }}" title="Eliminar">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
+              {% if current_user.rol == 'Administrador' %}
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ cli.id }}" title="Eliminar">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -183,6 +185,7 @@
           </div>
         </div>
 
+        {% if current_user.rol == 'Administrador' %}
         <!-- MODAL CONFIRMACIÓN ELIMINAR -->
         <div class="modal fade" id="modalEliminar{{ cli.id }}" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog">
@@ -206,6 +209,7 @@
             </div>
           </div>
         </div>
+        {% endif %}
 
         {% else %}
         <tr>
@@ -307,4 +311,3 @@
   </div>
 </div>
 {% endblock %}
-

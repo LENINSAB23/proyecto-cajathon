@@ -98,11 +98,42 @@ def run_tests():
     assert res.status_code == 200
     assert res.data.startswith(b'%PDF')
     print(f"14. [PASS] Generación y descarga de reporte PDF con membrete ({len(res.data)} bytes)")
+    for tipo in ('riesgo_alto', 'morosidad'):
+        assert client.get(f'/reportes/exportar/excel?tipo={tipo}').status_code == 200
+        assert client.get(f'/reportes/exportar/pdf?tipo={tipo}').status_code == 200
+    print("15. [PASS] Exportaciones PDF/Excel de riesgo alto y morosidad")
+
+    analista_client = app.test_client()
+    res = analista_client.get('/demo-login/analista')
+    assert res.status_code == 302 and res.headers['Location'].endswith('/dashboard')
+    assert analista_client.get('/clientes/').status_code == 200
+    assert analista_client.get('/creditos/').status_code == 200
+    assert analista_client.get('/riesgos/').status_code == 200
+    res = analista_client.get('/morosidad/')
+    assert res.status_code == 302 and res.headers['Location'].endswith('/dashboard')
+    assert analista_client.get('/reportes/').status_code == 302
+    assert 'Gestión de Morosidad' not in analista_client.get('/dashboard').get_data(as_text=True)
+    print("16. [PASS] Analista limitado a clientes, créditos y evaluación de riesgo")
+
+    cobranzas_client = app.test_client()
+    res = cobranzas_client.get('/demo-login/cobranzas')
+    assert res.status_code == 302 and res.headers['Location'].endswith('/morosidad/')
+    assert cobranzas_client.get('/morosidad/').status_code == 200
+    for path in ('/dashboard', '/clientes/', '/creditos/', '/riesgos/', '/reportes/'):
+        assert cobranzas_client.get(path).status_code == 302
+    res = cobranzas_client.post('/clientes/crear')
+    assert res.status_code == 302 and res.headers['Location'].endswith('/morosidad/')
+    assert cobranzas_client.get('/reportes/exportar/excel?tipo=morosidad').status_code == 200
+    assert cobranzas_client.get('/reportes/exportar/pdf?tipo=evaluaciones').status_code == 403
+    assert 'Solicitudes de Crédito' not in cobranzas_client.get('/morosidad/').get_data(as_text=True)
+    print("17. [PASS] Cobranzas limitado a morosidad, pagos, alertas y su reporte")
+
+    assert client.get('/demo-login/invalid').status_code == 404
+    print("18. [PASS] Rechazo de perfiles de demostración desconocidos")
 
     print("\n==================================================================")
-    print("  ✅ TODAS LAS 14 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON AL 100%")
+    print("  TODAS LAS 18 PRUEBAS UNITARIAS Y DE INTEGRACIÓN PASARON")
     print("==================================================================\n")
 
 if __name__ == '__main__':
     run_tests()
-
