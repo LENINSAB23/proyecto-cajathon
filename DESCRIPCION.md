@@ -139,3 +139,4 @@ El sistema ha sido estructurado respetando los principios de la **Resolución SB
 - **Categoría 3 (Dudoso):** Atrasos entre 61 y 120 días.
 - **Categoría 4 (Pérdida):** Atrasos superiores a 120 días.
 - **Prudencia Financiera:** Recomendación de mantener el ratio DTI inferior al 35% y exigir garantías o avales solidarios para ratios entre 35% y 50%.
+
