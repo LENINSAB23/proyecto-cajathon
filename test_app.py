@@ -45,6 +45,8 @@ def test_postgres_query_adapter():
     assert len(generated_id) == 36
 
 def run_tests():
+    # Asegurar que las pruebas unitarias y de integración corran sobre la base local aislada
+    Config.DATABASE_URL = ""
     app = create_app()
     client = app.test_client()
 
