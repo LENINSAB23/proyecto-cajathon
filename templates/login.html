@@ -95,6 +95,9 @@
       Si la cuenta es válida pero no tiene perfil, solicita al administrador que vincule su UUID en
       <code>public.usuarios</code>.
     </div>
+    <div class="text-center mt-3">
+      <a href="{{ url_for('auth.register') }}">¿No tienes cuenta? Crear cuenta</a>
+    </div>
     {% endif %}
 
     <div class="text-center mt-3 pt-2 border-top">

@@ -8,6 +8,7 @@ Plataforma Fintech SaaS empresarial diseñada para la prevención, identificaci�
 - **Bank-ito Copilot IA (Google Gemini):** Asistente financiero inteligente integrado en el drawer lateral y en la evaluación técnica de solicitudes (Score 0-100, fortalezas, factores de riesgo, alertas rojas y probabilidades de morosidad a 30 y 90 días).
 - **Simulador de Crédito en Tiempo Real:** Cálculo dinámico con sistema francés de amortización, evaluación de capacidad de pago mensual y ratio de endeudamiento DTI (*Debt-to-Income*).
 - **Gestión 360° de Clientes & Centrales de Riesgo:** Historial crediticio unificado, expediente financiero y clasificación regulatoria SBS.
+- **Registro de cuentas con aprobación:** Creación de credenciales mediante Supabase Auth; cada perfil nuevo queda inactivo y sin acceso hasta que un administrador lo aprueba.
 - **Validación de datos de clientes:** Verificación de edad (18 a 95 años), ocupación e importes financieros finitos y dentro de rangos válidos al registrar o editar clientes.
 - **Centro de Cobranzas y Morosidad:** Detección de mora temprana (1-8 días), seguimiento de cartera pesada (>30 días) y contacto prioritario de deudores.
 - **Reportes Financieros Auditables:** Exportación oficial en formato PDF con membrete institucional y hojas de cálculo Excel bancario (.xlsx).
@@ -47,7 +48,23 @@ La aplicación no cambia a SQLite silenciosamente cuando se configura PostgreSQL
 
 1. Crea un proyecto en Supabase.
 2. En **SQL Editor**, ejecuta `database/schema.sql`. El esquema crea las siete tablas, índices, claves foráneas, timestamps y políticas RLS; la tabla `usuarios` enlaza cada perfil con el UUID de `auth.users`.
-3. En **Authentication > Users**, crea una cuenta por persona. Para asignarle un rol, copia el UUID de Auth e inserta el perfil asociado en `public.usuarios`:
+3. En **Authentication > Users**, puedes crear las cuentas manualmente. También se pueden solicitar desde **Crear cuenta** en el login publicado: Supabase Auth crea las credenciales y la aplicación guarda un perfil inactivo con rol de analista. La persona debe confirmar su correo si Supabase tiene habilitada esa opción, y un administrador debe aprobar el perfil antes de permitirle entrar.
+
+Para aprobar una solicitud, localiza el UUID de la cuenta en Supabase Auth, verifica la identidad y ejecuta una actualización como esta en **SQL Editor**. Asigna únicamente el rol autorizado:
+
+```sql
+UPDATE public.usuarios
+SET activo = TRUE,
+    rol = 'Analista de créditos',
+    cargo = 'Analista de Créditos',
+    agencia = 'Sede Central',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 'UUID_DE_AUTH'
+  AND email = 'correo-institucional'
+  AND activo = FALSE;
+```
+
+Para crear manualmente el perfil de una cuenta en Supabase Auth, copia su UUID y ejecuta:
 
    ```sql
    INSERT INTO public.usuarios (id, email, password_hash, nombre, rol, cargo, agencia, activo)
@@ -79,6 +96,7 @@ El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `D
 
 - Usa el correo y la contraseña de una cuenta creada en **Supabase Authentication > Users**. Las cuentas `admin@creditrisk.pe`, `analista@creditrisk.pe` y `cobranzas@creditrisk.pe` son exclusivamente para SQLite local y no se crean en la base de producción.
 - Confirma que el correo de Supabase esté verificado y que el perfil en `public.usuarios` tenga el mismo UUID y correo, además de `activo = TRUE`.
+- Las solicitudes del formulario se guardan inicialmente con `activo = FALSE`; un administrador debe aprobarlas antes de iniciar sesión. Mientras tanto, el login indica que el acceso está pendiente.
 - Si Supabase acepta las credenciales pero falta el perfil, el login indicará que el administrador debe vincular la cuenta. Usa la consulta SQL del paso 3 para hacerlo.
 - En Render, verifica `SUPABASE_URL`, `SUPABASE_KEY`, `DATABASE_URL`, `DEMO_MODE=False` y `DEMO_LOGIN_ENABLED=False`. La aplicación ahora falla al arrancar si falta la configuración de Supabase Auth en producción, en vez de aceptar credenciales que no puede validar.
 

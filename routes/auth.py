@@ -14,6 +14,10 @@ class UserProfileNotConfigured(Exception):
     """Raised when an authenticated Supabase user has no active application profile."""
 
 
+class UserPendingApproval(Exception):
+    """Raised when an authenticated Supabase user's application profile is inactive."""
+
+
 ROLE_HOME_ENDPOINTS = {
     'Administrador': 'dashboard.index',
     'Analista de créditos': 'dashboard.index',
@@ -69,11 +73,13 @@ def authenticate_user(email, password):
             return None
 
         user = query_db(
-            "SELECT * FROM usuarios WHERE id = ? AND activo = TRUE",
+            "SELECT * FROM usuarios WHERE id = ?",
             (str(auth_user.id),),
             one=True
         )
         if user and user['email'].strip().lower() == auth_user.email.strip().lower():
+            if not user['activo']:
+                raise UserPendingApproval
             return user
         raise UserProfileNotConfigured
 
@@ -97,6 +103,13 @@ def login():
 
         try:
             user = authenticate_user(email, password)
+        except UserPendingApproval:
+            current_app.logger.info("A pending Supabase account attempted to sign in.")
+            flash(
+                'Tu cuenta ya fue creada, pero el acceso está pendiente de aprobación por un administrador.',
+                'warning'
+            )
+            return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
         except UserProfileNotConfigured:
             current_app.logger.warning(
                 "Supabase authenticated a user without a matching active application profile."
@@ -139,6 +152,91 @@ def login():
             flash('Correo electrónico o contraseña incorrectos.', 'danger')
 
     return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
+    return render_template('login.html', supabase_auth_enabled=Config.USE_SUPABASE_AUTH)
+
+@auth_bp.route('/registro', methods=['GET', 'POST'])
+def register():
+    if not Config.USE_SUPABASE_AUTH or not Config.DATABASE_URL:
+        abort(404)
+
+    if request.method == 'POST':
+        name = request.form.get('nombre', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        password_confirmation = request.form.get('password_confirmation', '')
+
+        if (
+            not 2 <= len(name) <= 150
+            or len(email) > 255
+            or email.count('@') != 1
+            or any(character.isspace() for character in email)
+            or '.' not in email.rsplit('@', 1)[-1]
+        ):
+            flash('Ingresa un nombre y un correo electrónico válidos.', 'danger')
+            return render_template('registro.html', supabase_auth_enabled=True)
+        if len(password) < 12 or len(password) > 128:
+            flash('La contraseña debe tener entre 12 y 128 caracteres.', 'danger')
+            return render_template('registro.html', supabase_auth_enabled=True)
+        if password != password_confirmation:
+            flash('Las contraseñas no coinciden.', 'danger')
+            return render_template('registro.html', supabase_auth_enabled=True)
+
+        try:
+            response = get_supabase().auth.sign_up({
+                'email': email,
+                'password': password,
+                'options': {'data': {'full_name': name}}
+            })
+        except (HTTPError, AuthError):
+            current_app.logger.warning("Supabase rejected an account registration request.")
+            flash(
+                'No se pudo completar el registro. Verifica los datos o intenta iniciar sesión si ya tienes una cuenta.',
+                'danger'
+            )
+            return render_template('registro.html', supabase_auth_enabled=True)
+
+        auth_user = getattr(response, 'user', None)
+        if not auth_user or not getattr(auth_user, 'id', None) or not getattr(auth_user, 'email', None):
+            current_app.logger.error("Supabase returned no user after an account registration request.")
+            flash(
+                'Supabase no confirmó la creación de la cuenta. Inténtalo nuevamente o contacta al administrador.',
+                'danger'
+            )
+            return render_template('registro.html', supabase_auth_enabled=True)
+        identities = getattr(auth_user, 'identities', None)
+        if identities is not None and not identities:
+            flash(
+                'Si fue posible crear la cuenta, recibirás un correo de confirmación. '
+                'El acceso requiere aprobación administrativa; si ya tienes cuenta, inicia sesión.',
+                'success'
+            )
+            return redirect(url_for('auth.login'))
+
+        try:
+            execute_db("""
+                INSERT INTO usuarios (
+                    id, email, password_hash, nombre, rol, cargo, agencia, activo
+                ) VALUES (?, ?, NULL, ?, 'Analista de créditos',
+                          'Pendiente de aprobación', 'Pendiente de asignación', FALSE)
+            """, (str(auth_user.id), auth_user.email.strip().lower(), name))
+        except Exception:
+            current_app.logger.exception("Supabase user was created but the application profile could not be saved.")
+            flash(
+                'La cuenta se creó en Supabase, pero no se pudo registrar la solicitud de acceso. '
+                'Contacta al administrador e indica el correo usado; no vuelvas a registrarte.',
+                'danger'
+            )
+            return render_template('registro.html', supabase_auth_enabled=True)
+
+        flash(
+            'Si fue posible crear la cuenta, recibirás un correo de confirmación. '
+            'El acceso requiere aprobación administrativa; si ya tienes cuenta, inicia sesión.',
+            'success'
+        )
+        return redirect(url_for('auth.login'))
+
+    return render_template('registro.html', supabase_auth_enabled=True)
+
 
 @auth_bp.route('/demo-login/<role>')
 def demo_login(role):

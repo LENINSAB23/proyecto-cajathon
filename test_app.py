@@ -4,7 +4,7 @@ from unittest.mock import patch
 from werkzeug.security import check_password_hash
 from database.db import new_id, query_db
 from config import Config
-from routes.auth import UserProfileNotConfigured, authenticate_user
+from routes.auth import UserPendingApproval, UserProfileNotConfigured, authenticate_user
 from supabase import AuthError
 from datetime import date, timedelta
 import sqlite3
@@ -61,6 +61,7 @@ def run_tests():
     assert b'admin@creditrisk.pe' not in login_page.data
     assert b'analista@creditrisk.pe' not in login_page.data
     assert b'cobranzas@creditrisk.pe' not in login_page.data
+    assert client.get('/registro').status_code == 404
 
     # 1. Login demo
     res = client.post('/login', data={
@@ -95,6 +96,97 @@ def run_tests():
                 authenticated_profile = authenticate_user('analista@creditrisk.pe', 'supabase-password')
     assert authenticated_profile['rol'] == 'Analista de créditos'
     assert profile_lookup.call_args.args[1] == (supabase_profile['id'],)
+
+    pending_profile = dict(supabase_profile, activo=False)
+    with patch.object(Config, 'USE_SUPABASE_AUTH', True):
+        with patch('routes.auth.get_supabase', return_value=supabase_auth):
+            with patch('routes.auth.query_db', return_value=pending_profile):
+                try:
+                    authenticate_user('analista@creditrisk.pe', 'supabase-password')
+                    raise AssertionError("El perfil pendiente debió impedir el inicio de sesión.")
+                except UserPendingApproval:
+                    pass
+
+    register_calls = []
+    profile_writes = []
+    register_auth = SimpleNamespace(
+        auth=SimpleNamespace(
+            sign_up=lambda credentials: (
+                register_calls.append(credentials)
+                or SimpleNamespace(user=SimpleNamespace(
+                    id='00000000-0000-0000-0000-000000000002',
+                    email=credentials['email']
+                ))
+            )
+        )
+    )
+    register_client = app.test_client()
+    with patch.object(Config, 'USE_SUPABASE_AUTH', True), \
+         patch.object(Config, 'DATABASE_URL', 'postgresql://test'), \
+         patch('routes.auth.get_supabase', return_value=register_auth), \
+         patch('app.query_db', return_value={'cnt': 0}), \
+         patch('routes.auth.execute_db', side_effect=lambda query, args=(): profile_writes.append((query, args))):
+        assert register_client.get('/registro').status_code == 200
+        mismatch = register_client.post('/registro', data={
+            'nombre': 'Analista de Prueba',
+            'email': 'new.user@example.com',
+            'password': 'StrongPassword!123',
+            'password_confirmation': 'DifferentPassword!123',
+        })
+        assert mismatch.status_code == 200
+        assert b'Las contrase' in mismatch.data
+        assert register_calls == []
+
+        registration = register_client.post('/registro', data={
+            'nombre': 'Analista de Prueba',
+            'email': 'New.User@example.com',
+            'password': 'StrongPassword!123',
+            'password_confirmation': 'StrongPassword!123',
+        })
+        assert registration.status_code == 302
+        assert registration.headers['Location'].endswith('/login')
+        assert register_calls[0]['email'] == 'new.user@example.com'
+        assert register_calls[0]['password'] == 'StrongPassword!123'
+        assert len(profile_writes) == 1
+        profile_sql, profile_args = profile_writes[0]
+        assert 'Analista de créditos' in profile_sql and 'FALSE' in profile_sql
+        assert profile_args == (
+            '00000000-0000-0000-0000-000000000002',
+            'new.user@example.com',
+            'Analista de Prueba',
+        )
+        with register_client.session_transaction() as registration_session:
+            assert 'user_id' not in registration_session
+
+        assert b'Crear cuenta' in register_client.get('/login').data
+        pending_login_client = app.test_client()
+        with patch('routes.auth.authenticate_user', side_effect=UserPendingApproval):
+            pending_login = pending_login_client.post('/login', data={
+                'email': 'new.user@example.com',
+                'password': 'StrongPassword!123',
+            })
+        assert pending_login.status_code == 200
+        assert b'pendiente de aprobaci' in pending_login.data
+
+        duplicate_auth = SimpleNamespace(
+            auth=SimpleNamespace(
+                sign_up=lambda credentials: SimpleNamespace(user=SimpleNamespace(
+                    id='00000000-0000-0000-0000-000000000003',
+                    email=credentials['email'],
+                    identities=[],
+                ))
+            )
+        )
+        with patch('routes.auth.get_supabase', return_value=duplicate_auth):
+            duplicate_registration = register_client.post('/registro', data={
+                'nombre': 'Otra Persona',
+                'email': 'new.user@example.com',
+                'password': 'StrongPassword!123',
+                'password_confirmation': 'StrongPassword!123',
+            })
+        assert duplicate_registration.status_code == 302
+        assert len(profile_writes) == 1
+
     with patch.object(Config, 'USE_SUPABASE_AUTH', True):
         with patch('routes.auth.get_supabase', return_value=supabase_auth):
             with patch('routes.auth.query_db', return_value=None):
@@ -137,6 +229,8 @@ def run_tests():
                 assert authenticate_user('analista@creditrisk.pe', 'wrong-password') is None
                 profile_lookup.assert_not_called()
     print("1a. [PASS] Supabase Auth vincula el UID autenticado al perfil y su rol")
+    print("1ab. [PASS] Registro Supabase crea perfil inactivo y exige confirmación")
+    print("1ac. [PASS] Perfiles pendientes no pueden iniciar sesión")
     print("1aa. [PASS] Perfil Supabase faltante informa cómo corregir el vínculo")
     test_postgres_query_adapter()
     print("1b. [PASS] Adaptación de consultas y UUIDs compatibles con PostgreSQL")
