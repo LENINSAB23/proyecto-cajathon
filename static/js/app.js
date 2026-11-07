@@ -1,5 +1,5 @@
 /**
- * CAJA INTELIGENTE - JavaScript de Interfaz & Gráficos Fintech
+ * Credit Risk - JavaScript de Interfaz & Gráficos Fintech
  * - Bank-ito Copilot Asistente de IA (Google Gemini)
  * - Control de Simulador de Crédito en Tiempo Real
  * - Gráficos Financieros Chart.js

@@ -15,6 +15,7 @@ from routes.decisiones import decisiones_bp
 from routes.salud import salud_bp
 from routes.promesas import promesas_bp
 from routes.telegram_webhook import telegram_bp
+from services.telegram_service import iniciar_demonio_telegram
 
 def create_app():
     app = Flask(__name__)
@@ -55,7 +56,7 @@ def create_app():
         alertas_no_leidas = res['cnt'] if res else 0
 
         return {
-            'app_name': 'CAJA INTELIGENTE',
+            'app_name': 'Credit Risk',
             'institucion': 'Caja Municipal de Ahorro y Crédito - CMAC',
             'database_provider': 'Supabase PostgreSQL' if Config.DATABASE_URL else 'SQLite local',
             'demo_mode': Config.DEMO_MODE,
@@ -82,6 +83,12 @@ def create_app():
         current_app.logger.error("Error interno no controlado: %s", e)
         return render_template('base.html', error_code=500, error_msg='Ha ocurrido un error interno en el servidor. El equipo técnico ha sido notificado.'), 500
 
+    # Iniciar escucha autónoma de Telegram en segundo plano (Webhook en Render o Polling resiliente)
+    try:
+        iniciar_demonio_telegram(app)
+    except Exception as e_tg:
+        app.logger.warning("No se pudo iniciar el demonio de Telegram: %s", e_tg)
+
     return app
 
 app = create_app()
@@ -90,7 +97,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = Config.DEBUG
     print(f"\n" + "="*70)
-    print("  CAJA INTELIGENTE - Sistema de Evaluación de Riesgo con IA")
+    print("  Credit Risk - Sistema de Evaluación de Riesgo con IA")
     print("  Orientado a Cajas Municipales de Ahorro y Crédito del Perú")
     print(f"  Servidor local activo en: http://127.0.0.1:{port}")
     print("="*70 + "\n")

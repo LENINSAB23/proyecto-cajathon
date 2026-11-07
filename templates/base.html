@@ -31,9 +31,9 @@
   <!-- SIDEBAR NAVEGACIÓN -->
   <aside class="app-sidebar" id="appSidebar">
     <div class="sidebar-brand">
-      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="CAJA INTELIGENTE">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Credit Risk">
       <div>
-        <h1 class="brand-title">CAJA INTELIGENTE</h1>
+        <h1 class="brand-title">Credit Risk</h1>
         <span class="brand-subtitle"><i class="fa-solid fa-chart-line me-1"></i>Riesgo Crediticio CMAC</span>
       </div>
     </div>
@@ -105,6 +105,11 @@
         <i class="fa-solid fa-handshake"></i><span>Promesas de pago</span>
       </a>
       {% endif %}
+
+      <div class="nav-section-title">Canales y Alertas</div>
+      <a href="#" class="sidebar-link" data-bs-toggle="modal" data-bs-target="#modalEnviarTelegram">
+        <i class="fa-brands fa-telegram text-info"></i><span>Canal Telegram</span>
+      </a>
     </div>
 
     <!-- Footer Sidebar con Estado del Sistema -->
@@ -142,6 +147,12 @@
       </div>
 
       <div class="topbar-right">
+        <!-- Botón Enviar a Telegram -->
+        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#modalEnviarTelegram" title="Enviar Notificación a Telegram" style="border-radius: 20px; font-weight: 500; font-size: 0.82rem;">
+          <i class="fa-brands fa-telegram text-primary"></i>
+          <span>Enviar a Telegram</span>
+        </button>
+
         <!-- Botón Bank-ito Copilot -->
         <button type="button" class="btn-bankito-pill" id="openBankitoBtn" title="Abrir Bank-ito Copilot de Riesgo">
           <span class="dot-ai"></span>
@@ -228,11 +239,85 @@
     <!-- FOOTER INFORMATIVO -->
     <footer class="bg-white border-top py-3 px-4 text-muted small mt-auto">
       <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
-        <span>&copy; 2026 <strong>CAJA INTELIGENTE</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con Bank-ito IA.</span>
+        <span>&copy; 2026 <strong>Credit Risk</strong> &bull; Sistema de Evaluación de Riesgo Crediticio con Bank-ito IA.</span>
         <span>Normativa SBS Res. N° 11356-2008 &bull; Cajas Municipales de Ahorro y Crédito</span>
       </div>
     </footer>
 
+  </div>
+</div>
+
+<!-- MODAL ENVIAR MENSAJE A TELEGRAM -->
+<div class="modal fade" id="modalEnviarTelegram" tabindex="-1" aria-labelledby="modalEnviarTelegramLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
+      <div class="modal-header text-white" style="background-color: #0F172A; border-bottom: 2px solid #0284C7;">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary" style="width: 34px; height: 34px;">
+            <i class="fa-brands fa-telegram text-white fs-5"></i>
+          </div>
+          <div>
+            <h6 class="modal-title fw-bold mb-0" id="modalEnviarTelegramLabel">Enviar Notificación a Telegram</h6>
+            <small class="text-light opacity-75" style="font-size: 0.72rem;">Canal Oficial &bull; @CreditRiskMonitor2bot</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form id="formEnviarTelegram">
+        <div class="modal-body p-3">
+          <div id="telegramAlertBox" class="d-none alert alert-dismissible fade show small mb-3" role="alert">
+            <span id="telegramAlertText"></span>
+            <button type="button" class="btn-close" onclick="document.getElementById('telegramAlertBox').classList.add('d-none')"></button>
+          </div>
+
+          <!-- Chat ID Destino -->
+          <div class="mb-3">
+            <label class="form-label-fintech d-flex justify-content-between">
+              <span>Chat ID Destino</span>
+              <span class="text-muted" style="font-size: 0.72rem;">Por defecto: Chat Administrador vinculado</span>
+            </label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-id-badge text-muted"></i></span>
+              <input type="text" class="form-control form-control-fintech" id="tgChatId" name="chat_id" value="6237089936" placeholder="Chat ID o vacío para automático">
+            </div>
+          </div>
+
+          <!-- Seleccionar Plantilla -->
+          <div class="mb-3">
+            <label class="form-label-fintech">Plantilla Institucional</label>
+            <select class="form-select form-select-sm form-control-fintech" id="tgPlantillaSelect">
+              <option value="custom" selected>✏️ Mensaje Libre / Personalizado</option>
+              <option value="preventivo">🔔 Recordatorio Preventivo de Pago</option>
+              <option value="mora">⚠️ Aviso de Cuota Vencida / Cobranza</option>
+              <option value="riesgo_alto">🚨 Alerta de Riesgo Crediticio Alto</option>
+              <option value="comunicado">🏛️ Comunicado Oficial Credit Risk</option>
+            </select>
+          </div>
+
+          <!-- Área de Texto del Mensaje -->
+          <div class="mb-2">
+            <label class="form-label-fintech d-flex justify-content-between">
+              <span>Contenido del Mensaje</span>
+              <span class="text-muted" id="tgCharCounter" style="font-size: 0.72rem;">0 caracteres</span>
+            </label>
+            <textarea class="form-control form-control-fintech" id="tgMensajeTexto" name="mensaje" rows="6" placeholder="Escriba aquí el mensaje que desea emitir a Telegram..." required></textarea>
+          </div>
+
+          <div class="p-2 rounded bg-light border mt-2" style="font-size: 0.72rem; color: #64748B;">
+            <i class="fa-solid fa-circle-check text-success me-1"></i>
+            <strong>Emisión Segura:</strong> Las evaluaciones con <code>Riesgo Alto</code> y cuotas en mora envían alertas automáticas desde el backend de forma ininterrumpida. Esta herramienta permite emitir avisos directos y recordatorios bajo demanda.
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light py-2 px-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="submit" class="btn btn-sm btn-fintech-primary" id="tgBtnSubmit">
+            <i class="fa-solid fa-paper-plane me-1"></i>Enviar a Telegram
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -286,6 +371,92 @@
 
 <!-- Custom Fintech App JS -->
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectPlantilla = document.getElementById('tgPlantillaSelect');
+  const txtMensaje = document.getElementById('tgMensajeTexto');
+  const charCounter = document.getElementById('tgCharCounter');
+  const formTelegram = document.getElementById('formEnviarTelegram');
+  const btnSubmit = document.getElementById('tgBtnSubmit');
+  const alertBox = document.getElementById('telegramAlertBox');
+  const alertText = document.getElementById('telegramAlertText');
+
+  const plantillas = {
+    preventivo: "🔔 RECORDATORIO PREVENTIVO DE PAGO\n🏛️ Credit Risk - Sistema SBS\n\nEstimado(a) Cliente, le recordamos que su cuota crediticia está próxima a vencer.\nMantener sus pagos al día protege su calificación ante la SBS y evita penalidades moratorias.\n\n💳 Para consultar cuentas de pago y transferencias escriba /pagar en nuestro canal oficial.",
+    mora: "⚠️ AVISO DE GESTIÓN DE COBRANZA - CUOTA VENCIDA\n🏛️ Credit Risk - Área de Recuperaciones\n\nEstimado(a) Cliente, se registra un atraso en su cronograma de pagos.\nLe solicitamos regularizar su cuota a la brevedad para evitar la acumulación de penalidades y reportes en centrales de riesgo.\n\n👉 Escriba /pagar para abonar vía Yape, BCP o BBVA, o /promesa para registrar una fecha de compromiso.",
+    riesgo_alto: "🚨 ALERTA DE RIESGO CREDITICIO\n🏛️ Credit Risk - Monitoreo en Tiempo Real\n\nSe ha detectado un crédito que requiere atención inmediata del comité.\nNivel de riesgo: ALTO\nMotivo: Ratio de endeudamiento DTI superior al 55% y atraso reportado en el sistema financiero.\n\n⚠️ Se recomienda revisar el expediente en la plataforma web.",
+    comunicado: "🏛️ COMUNICADO INSTITUCIONAL - CREDIT RISK\n\nEstimados clientes y funcionarios:\nNuestros canales oficiales de autogestión crediticia y recepción de abonos digitales se encuentran 100% operativos 24/7.\n\n🤖 Para orientación y consultas financieras escriba /bankito."
+  };
+
+  if (selectPlantilla && txtMensaje) {
+    selectPlantilla.addEventListener('change', function() {
+      const val = selectPlantilla.value;
+      if (plantillas[val]) {
+        txtMensaje.value = plantillas[val];
+      }
+      updateCounter();
+    });
+
+    txtMensaje.addEventListener('input', updateCounter);
+
+    function updateCounter() {
+      if (charCounter) {
+        charCounter.textContent = `${txtMensaje.value.length} caracteres`;
+      }
+    }
+  }
+
+  if (formTelegram) {
+    formTelegram.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const mensaje = txtMensaje.value.trim();
+      if (!mensaje) return;
+
+      const chatId = document.getElementById('tgChatId').value.trim();
+      const tipo = selectPlantilla ? selectPlantilla.value : 'custom';
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando...';
+      alertBox.classList.add('d-none');
+
+      try {
+        const resp = await fetch('/telegram/enviar-mensaje', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mensaje: mensaje,
+            chat_id: chatId,
+            tipo_alerta: `MANUAL_${tipo.toUpperCase()}`
+          })
+        });
+
+        const data = await resp.json();
+        if (data.ok) {
+          alertBox.className = 'alert alert-success alert-dismissible fade show small mb-3';
+          alertText.innerHTML = `<strong>¡Enviado con éxito!</strong> ${data.message}`;
+          alertBox.classList.remove('d-none');
+          if (selectPlantilla.value === 'custom') {
+            txtMensaje.value = '';
+            updateCounter();
+          }
+        } else {
+          alertBox.className = 'alert alert-danger alert-dismissible fade show small mb-3';
+          alertText.innerHTML = `<strong>Error:</strong> ${data.error || 'No se pudo enviar el mensaje'}`;
+          alertBox.classList.remove('d-none');
+        }
+      } catch (err) {
+        alertBox.className = 'alert alert-danger alert-dismissible fade show small mb-3';
+        alertText.innerHTML = `<strong>Error de red:</strong> ${err.message}`;
+        alertBox.classList.remove('d-none');
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i>Enviar a Telegram';
+      }
+    });
+  }
+});
+</script>
 
 {% block extra_scripts %}{% endblock %}
 

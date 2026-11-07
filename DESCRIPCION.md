@@ -1,8 +1,8 @@
-# CAJA INTELIGENTE &bull; Documentación Integral del Proyecto
+# CREDIT RISK &bull; Documentación Integral del Proyecto
 
 ## 1. Visión General del Sistema
 
-**CAJA INTELIGENTE** es una plataforma SaaS de tecnología financiera (Fintech) de nivel empresarial diseñada específicamente para **prevenir, identificar y evaluar riesgos crediticios** en el ecosistema de las Cajas Municipales de Ahorro y Crédito (CMAC) del Perú y entidades microfinancieras reguladas por la **Superintendencia de Banca, Seguros y AFP (SBS)**.
+**CREDIT RISK** es una plataforma SaaS de tecnología financiera (Fintech) de nivel empresarial diseñada específicamente para **prevenir, identificar y evaluar riesgos crediticios** en el ecosistema de las Cajas Municipales de Ahorro y Crédito (CMAC) del Perú y entidades microfinancieras reguladas por la **Superintendencia de Banca, Seguros y AFP (SBS)**.
 
 El objetivo central del sistema es asistir a los analistas y comités de crédito en la toma de decisiones informadas, transparentes y éticas, sustentadas en el análisis cuantitativo del flujo de caja, capacidad de pago y endeudamiento sistémico, complementado con el poder explicativo de la Inteligencia Artificial.
 

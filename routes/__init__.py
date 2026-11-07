@@ -1,2 +1,2 @@
-# Rutas de la plataforma Caja Inteligente
+# Rutas de la plataforma Credit Risk
 

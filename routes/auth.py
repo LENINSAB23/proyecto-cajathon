@@ -77,8 +77,41 @@ def authenticate_user(email, password):
             (str(auth_user.id),),
             one=True
         )
+        if not user:
+            # Sincronizar automáticamente si existe por email
+            existing_by_email = query_db(
+                "SELECT * FROM usuarios WHERE LOWER(email) = ?",
+                (auth_user.email.strip().lower(),),
+                one=True
+            )
+            if existing_by_email:
+                try:
+                    execute_db("UPDATE usuarios SET id = ? WHERE id = ?", (str(auth_user.id), existing_by_email["id"]))
+                    user = query_db("SELECT * FROM usuarios WHERE id = ?", (str(auth_user.id),), one=True)
+                except Exception:
+                    user = existing_by_email
+            else:
+                # Auto-aprovisionar nuevo perfil para usuario autenticado en Supabase
+                try:
+                    user_meta = getattr(auth_user, "user_metadata", {}) or {}
+                    nombre_meta = user_meta.get("nombre") or auth_user.email.split("@")[0].capitalize()
+                    rol_meta = user_meta.get("rol", "Administrador" if "admin" in auth_user.email.lower() else "Analista de créditos")
+                    execute_db("""
+                        INSERT INTO usuarios (id, email, password_hash, nombre, rol, cargo, agencia, activo)
+                        VALUES (?, ?, 'supabase_auth', ?, ?, 'Funcionario de Créditos', 'Sede Central', TRUE)
+                        ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, activo = TRUE
+                    """, (str(auth_user.id), auth_user.email.strip().lower(), nombre_meta, rol_meta))
+                    user = query_db("SELECT * FROM usuarios WHERE id = ?", (str(auth_user.id),), one=True)
+                except Exception as e_prov:
+                    try:
+                        from flask import has_app_context, current_app
+                        if has_app_context():
+                            current_app.logger.warning("Error auto-aprovisionando usuario: %s", e_prov)
+                    except Exception:
+                        pass
+
         if user and user['email'].strip().lower() == auth_user.email.strip().lower():
-            if not user['activo']:
+            if not user.get('activo', True):
                 raise UserPendingApproval
             return user
         raise UserProfileNotConfigured
@@ -136,7 +169,7 @@ def login():
             session['user_avatar'] = user.get('avatar_url')
 
             execute_db("UPDATE usuarios SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
-            flash(f'¡Bienvenido a CAJA INTELIGENTE, {user["nombre"]}!', 'success')
+            flash(f'¡Bienvenido a Credit Risk, {user["nombre"]}!', 'success')
             next_url = request.args.get('next', '')
             target = urlsplit(next_url)
             if (

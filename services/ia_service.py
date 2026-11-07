@@ -39,7 +39,7 @@ REGLAS ESTRICTAS:
   "recomendaciones": "<recomendaciones prácticas para el analista: aprobación condicionada, garantías, plazo, monto>"
 }"""
 
-    prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para la plataforma CAJA INTELIGENTE.
+    prompt_usuario = f"""Evalúa la siguiente solicitud de crédito para la plataforma CREDIT RISK.
 No se incluyen datos protegidos. Basa el análisis en métricas financieras y comportamiento de pago según estándares SBS.
 
 MÉTRICAS FINANCIERAS CUANTITATIVAS CALCULADAS:

@@ -20,7 +20,7 @@ def _data():
     if data["estado_salud"] == "ROJO":
         notify_telegram(
             f"financial-health-critical:{datetime.now().strftime('%Y-%m')}",
-            f"CAJA INTELIGENTE: el indicador de salud financiera está CRÍTICO. "
+            f"CREDIT RISK: el indicador de salud financiera está CRÍTICO. "
             f"Morosidad calculada: {data['porcentaje_morosidad']}%.",
         )
     return data

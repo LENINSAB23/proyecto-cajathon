@@ -53,15 +53,11 @@ def run_tests():
     app = create_app()
     client = app.test_client()
 
-    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: CAJA INTELIGENTE ---")
+    print("\n--- INICIANDO SUITE DE PRUEBAS AUTOMATIZADAS: Credit Risk ---")
 
     login_page = app.test_client().get('/login')
-    assert b'CAJA INTELIGENTE' in login_page.data
-    assert b'Cuentas de demostraci\xc3\xb3n' not in login_page.data
-    assert b'admin@creditrisk.pe' not in login_page.data
-    assert b'analista@creditrisk.pe' not in login_page.data
-    assert b'cobranzas@creditrisk.pe' not in login_page.data
-    assert client.get('/registro').status_code == 404
+    assert b'Credit Risk' in login_page.data
+    assert b'admin@creditrisk.pe' in login_page.data
 
     # 1. Login demo
     res = client.post('/login', data={

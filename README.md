@@ -1,4 +1,4 @@
-# CAJA INTELIGENTE &bull; Sistema de Riesgo Crediticio con Bank-ito IA
+# CREDIT RISK &bull; Sistema de Riesgo Crediticio con Bank-ito IA
 
 Plataforma Fintech SaaS empresarial diseñada para la prevención, identificación y evaluación de riesgos crediticios en Cajas Municipales de Ahorro y Crédito (CMAC) del Perú. Integra a **Bank-ito**, copiloto y asesor de Inteligencia Artificial potenciado por la API de **Google Gemini**, garantizando evaluaciones explicables bajo la normativa regulatoria SBS (Res. N° 11356-2008).
 
@@ -107,7 +107,7 @@ El backend accede a PostgreSQL mediante una URI privada del servidor. Mantén `D
    ```powershell
    git init
    git add .
-   git commit -m "Preparar CAJA INTELIGENTE"
+   git commit -m "Preparar Credit Risk"
    git branch -M main
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main

@@ -1,5 +1,5 @@
 -- ============================================================================
--- PROYECTO: CAJA INTELIGENTE - Sistema de Evaluación de Riesgo Crediticio con IA
+-- PROYECTO: Credit Risk - Sistema de Evaluación de Riesgo Crediticio con IA
 -- Base de Datos PostgreSQL para Supabase
 -- Diseñado para Cajas Municipales de Ahorro y Crédito (CMAC) del Perú
 -- ============================================================================

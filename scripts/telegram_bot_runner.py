@@ -1,5 +1,5 @@
 """
-Script ejecutor (Runner / Polling) del Bot de Telegram de Caja Inteligente
+Script ejecutor (Runner / Polling) del Bot de Telegram de Credit Risk
 Permite atender comandos (/start, /pagar, /deuda, /historial, /promesa, /bankito)
 en tiempo real mediante Long Polling, tanto en desarrollo local como en workers de fondo.
 """
@@ -19,7 +19,7 @@ def run_bot_polling():
 
     print("==================================================================")
     print("🤖 INICIANDO BOT INTERACTIVO DE TELEGRAM: @CreditRiskMonitor2bot")
-    print("Canal: Caja Inteligente CMAC - Banca y Cobranzas")
+    print("Canal: Credit Risk CMAC - Banca y Cobranzas")
     print("Comandos disponibles: /start, /pagar, /deuda, /historial, /promesa, /bankito, /contacto")
     print("Esperando mensajes de usuarios...")
     print("==================================================================")

@@ -6,6 +6,9 @@ Cumple estrictamente con la normativa de privacidad y protección de datos finan
 
 import os
 import time
+import re
+import unicodedata
+import threading
 import requests
 from datetime import datetime
 from config import Config
@@ -380,7 +383,7 @@ def generar_mensaje_recordatorio_preventivo(datos_cuota: dict, datos_cliente: di
 
     mensaje = (
         "🔔 RECORDATORIO PREVENTIVO DE PAGO\n"
-        "🏛️ Caja Inteligente - Sistema Financiero CMAC\n\n"
+        "🏛️ Credit Risk - Sistema Financiero CMAC\n\n"
         f"Estimado(a) {nombres},\n"
         f"Le recordamos que su cuota crediticia está próxima a vencer:\n\n"
         f"📌 Código de Cliente: {codigo_cli}\n"
@@ -412,7 +415,7 @@ def generar_mensaje_aviso_mora(datos_cuota: dict, datos_cliente: dict = None, da
 
     mensaje = (
         "⚠️ AVISO DE GESTIÓN DE COBRANZA - CUOTA VENCIDA\n"
-        "🏛️ Caja Inteligente - Área de Cartera y Recuperaciones\n\n"
+        "🏛️ Credit Risk - Área de Cartera y Recuperaciones\n\n"
         f"Estimado(a) {nombres},\n"
         f"Se registra un atraso en el pago de su cuota crediticia:\n\n"
         f"📌 Código de Cliente: {codigo_cli}\n"
@@ -487,6 +490,15 @@ def enviar_recordatorio_cuota_telegram(pago_id: str) -> dict:
     )
     return res
 
+def _normalizar_texto(texto: str) -> str:
+    """Normaliza texto para comparación tolerante a acentos, mayúsculas, emojis y espacios."""
+    if not texto:
+        return ""
+    t = texto.lower()
+    t = ''.join(c for c in unicodedata.normalize('NFD', t) if unicodedata.category(c) != 'Mn')
+    t = re.sub(r'[^\w\s/\-]', ' ', t)
+    return ' '.join(t.split())
+
 def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
     """
     Procesador inteligente de mensajes y comandos interactivos para Telegram:
@@ -517,12 +529,18 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
     if not chat_id or not texto:
         return {"ok": False, "error": "No se detectó chat_id o texto"}
 
-    texto_lower = texto.lower()
+    norm = _normalizar_texto(texto)
+    raw_lower = texto.strip().lower()
 
-    # 1. COMANDO /start O /menu
-    if texto_lower in ("/start", "/menu", "menu", "hola", "inicio", "cmd_menu"):
+    # 1. COMANDO /start, /star, /menu O INICIO
+    if (
+        raw_lower.startswith("/star") or
+        raw_lower in ("/start", "/menu", "menu", "hola", "inicio", "cmd_menu") or
+        norm in ("start", "star", "menu", "hola", "inicio", "empezar", "comenzar") or
+        "bienvenid" in norm
+    ):
         bienvenida = (
-            "🏛️ BIENVENIDO A CAJA INTELIGENTE\n"
+            "🏛️ BIENVENIDO A CREDIT RISK\n"
             "Canal Oficial de Autogestión Crediticia y Pagos CMAC\n\n"
             "Hola, nos complace atenderte. A través de este canal puedes consultar tus cuotas, métodos de pago y recibir asesoría financiera 24/7 con Bank-ito IA.\n\n"
             "📌 Selecciona una opción del teclado o escribe un comando:\n\n"
@@ -540,13 +558,20 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         )
 
     # 2. COMANDO /pagar O METODOS DE PAGO
-    if texto_lower in ("/pagar", "pagar", "💳 métodos de pago", "pago_bancos", "pago_yape"):
+    if (
+        raw_lower in ("/pagar", "pagar", "pago_bancos", "pago_yape") or
+        "metodos de pago" in norm or
+        "metodo de pago" in norm or
+        norm == "pagar" or
+        ("pago" in norm and "historial" not in norm and "promesa" not in norm) or
+        "yape" in norm or "plin" in norm
+    ):
         mensaje_pago = (
             "🏦 CANALES Y MÉTODOS DE PAGO OFICIALES\n"
-            "🏛️ Caja Inteligente - Red de Recaudación SBS\n\n"
+            "🏛️ Credit Risk - Red de Recaudación SBS\n\n"
             "Puedes cancelar o amortizar tu cuota a través de cualquiera de los siguientes medios:\n\n"
             "📱 1. Billeteras Digitales (Acreditación Inmediata):\n"
-            "• Yape y Plin: Opción 'Pago de Servicios' -> Buscar 'Caja Inteligente'\n"
+            "• Yape y Plin: Opción 'Pago de Servicios' -> Buscar 'Credit Risk'\n"
             "• Ingresa tu Código de Cliente o DNI del titular.\n\n"
             "🏛️ 2. Transferencias Bancarias e Interbancarias (CCI):\n"
             "• Banco de Crédito del Perú (BCP):\n"
@@ -558,7 +583,7 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
             "• Banco de la Nación:\n"
             "  - Convenio Recaudador: 04-9821\n\n"
             "🏪 3. Agencias y Red de Agentes a Nivel Nacional:\n"
-            "• En agentes KasNet, Niubiz o Western Union indicando 'Caja Inteligente Créditos' y tu DNI.\n\n"
+            "• En agentes KasNet, Niubiz o Western Union indicando 'Credit Risk Créditos' y tu DNI.\n\n"
             "💡 Consejo: Guarda tu comprobante. Tu abono se reflejará en el sistema en tiempo real. Escribe /deuda para comprobar tu saldo actualizado."
         )
         return enviar_mensaje_telegram(
@@ -568,8 +593,15 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         )
 
     # 3. COMANDO /deuda O /estado
-    if texto_lower in ("/deuda", "/estado", "deuda", "estado", "📊 mi estado y deuda", "cmd_deuda", "cuanto debo"):
-        # Buscar la cuota pendiente con mayor prioridad en la base de datos
+    if (
+        raw_lower in ("/deuda", "/estado", "cmd_deuda") or
+        "mi estado y deuda" in norm or
+        "estado y deuda" in norm or
+        norm in ("deuda", "estado", "saldo") or
+        "cuanto debo" in norm or
+        "mi deuda" in norm or
+        "saldo pendiente" in norm
+    ):
         sql = """
             SELECT p.*,
                    CASE WHEN p.monto_cuota + p.penalidad - COALESCE(
@@ -608,7 +640,7 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
 
         msg_deuda = (
             "📊 ESTADO DE CUENTA CREDITICIO\n"
-            "🏛️ Caja Inteligente - Sistema SBS\n\n"
+            "🏛️ Credit Risk - Sistema SBS\n\n"
             f"👤 Titular: {pago.get('nombres')} {pago.get('apellidos')}\n"
             f"📌 Código: {pago.get('codigo_cliente')}\n"
             f"📄 Crédito N°: {pago.get('numero_solicitud')} ({pago.get('tipo_credito')})\n\n"
@@ -626,7 +658,13 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         return enviar_mensaje_telegram(msg_deuda, chat_id=chat_id, reply_markup=obtener_teclado_inline_pago())
 
     # 4. COMANDO /historial
-    if texto_lower in ("/historial", "historial", "📜 historial de pagos", "cmd_historial"):
+    if (
+        raw_lower in ("/historial", "cmd_historial") or
+        "historial de pagos" in norm or
+        "historial" in norm or
+        "ultimos pagos" in norm or
+        "abonos" in norm
+    ):
         sql_hist = """
             SELECT p.numero_cuota, p.total_cuotas, p.monto_cuota, p.fecha_pago,
                    p.metodo_pago, p.estado_pago, s.numero_solicitud
@@ -646,7 +684,7 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
             )
             return enviar_mensaje_telegram(msg_vacio, chat_id=chat_id, reply_markup=obtener_teclado_principal())
 
-        lineas = ["📜 HISTORIAL DE PAGOS REGISTRADOS\n🏛️ Caja Inteligente - Comprobantes\n"]
+        lineas = ["📜 HISTORIAL DE PAGOS REGISTRADOS\n🏛️ Credit Risk - Comprobantes\n"]
         for h in historial:
             f_pago = str(h.get("fecha_pago") or "Fecha reciente")[:10]
             met = h.get("metodo_pago") or "Transferencia / Ventanilla"
@@ -659,14 +697,18 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         return enviar_mensaje_telegram("\n".join(lineas), chat_id=chat_id, reply_markup=obtener_teclado_principal())
 
     # 5. COMANDO /promesa
-    if texto_lower.startswith("/promesa") or texto_lower in ("promesa", "🤝 promesa de pago", "cmd_promesa"):
+    if (
+        raw_lower.startswith("/promesa") or
+        "promesa de pago" in norm or
+        norm == "promesa" or
+        "compromiso" in norm or
+        raw_lower == "cmd_promesa"
+    ):
         partes = texto.split()
-        # Formato: /promesa 2026-11-20 400
         if len(partes) >= 3:
             fecha_prom = partes[1].strip()
             try:
                 monto_prom = float(partes[2].replace(",", "").strip())
-                # Obtener un cliente de la BD para asociar la promesa
                 cli = query_db("SELECT id, codigo_cliente FROM clientes LIMIT 1", one=True)
                 if cli and monto_prom > 0:
                     prom_id = new_id("prm")
@@ -692,10 +734,9 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
             except Exception as e_prm:
                 print(f"[WARN] Error registrando promesa desde bot: {e_prm}")
 
-        # Si no pasó parámetros válidos, mostrar guía amigable
         guia_promesa = (
             "🤝 REGISTRO DE COMPROMISO DE PAGO\n"
-            "🏛️ Caja Inteligente - Acuerdos de Cobranza\n\n"
+            "🏛️ Credit Risk - Acuerdos de Cobranza\n\n"
             "Si no puedes cancelar tu cuota hoy, puedes registrar un compromiso formal de pago para una fecha futura y evitar que tu caso pase a cobranza judicial.\n\n"
             "📝 Formato para registrar tu promesa:\n"
             "Escribe: `/promesa FECHA MONTO`\n\n"
@@ -706,12 +747,23 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         return enviar_mensaje_telegram(guia_promesa, chat_id=chat_id, reply_markup=obtener_teclado_principal())
 
     # 6. COMANDO /bankito O PREGUNTAS A LA IA
-    if texto_lower.startswith("/bankito") or texto_lower == "🤖 consultar a bank-ito ia":
-        pregunta = texto.replace("/bankito", "").replace("🤖 Consultar a Bank-ito IA", "").strip()
+    if (
+        raw_lower.startswith("/bankito") or
+        "consultar a bank-ito" in norm or
+        "consultar a bankito" in norm or
+        "bankito" in norm or
+        "bank-ito" in norm
+    ):
+        pregunta = texto.replace("/bankito", "").strip()
+        # Limpiar si venía del botón
+        for pfx in ("🤖 Consultar a Bank-ito IA", "Consultar a Bank-ito IA", "bank-ito ia", "bankito ia", "bankito"):
+            if pregunta.lower().startswith(pfx.lower()):
+                pregunta = pregunta[len(pfx):].strip()
+
         if not pregunta:
             ayuda_ia = (
                 "🤖 BANK-ITO IA - OFICIAL DE INTELIGENCIA FINANCIERA\n\n"
-                "¡Hola! Soy Bank-ito, el asistente con IA de Caja Inteligente regulado por los estándares SBS.\n\n"
+                "¡Hola! Soy Bank-ito, el asistente con IA de Credit Risk regulado por los estándares SBS.\n\n"
                 "Puedes hacerme cualquier pregunta financiera escribiendo `/bankito` seguido de tu duda:\n\n"
                 "Ejemplos:\n"
                 "• `/bankito ¿cómo evito que mi score SBS baje si me atraso?`\n"
@@ -726,10 +778,17 @@ def procesar_mensaje_entrante_telegram(update_data: dict) -> dict:
         return enviar_mensaje_telegram(msg_ia, chat_id=chat_id, reply_markup=obtener_teclado_principal())
 
     # 7. COMANDO /contacto O SOPORTE
-    if texto_lower in ("/contacto", "contacto", "📞 soporte y canales", "soporte", "ayuda"):
+    if (
+        raw_lower in ("/contacto", "contacto") or
+        "soporte y canales" in norm or
+        "soporte" in norm or
+        "canales de atencion" in norm or
+        "asesor" in norm or
+        "ayuda" in norm
+    ):
         msg_contacto = (
             "📞 CANALES DE ATENCIÓN Y CONTACTO\n"
-            "🏛️ Caja Inteligente - Sede Central CMAC\n\n"
+            "🏛️ Credit Risk - Sede Central CMAC\n\n"
             "📍 Dirección: Av. Central 450, Lima - Perú\n"
             "🕒 Horario de Atención: Lunes a Viernes de 8:30 a 18:00 / Sábados de 9:00 a 13:00\n\n"
             "☎️ Central Telefónica: (01) 619-8000\n"
@@ -781,3 +840,75 @@ def obtener_info_webhook() -> dict:
         return res.json()
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+_DEMONIO_TELEGRAM_INICIADO = False
+
+def iniciar_demonio_telegram(app):
+    """
+    Inicia un hilo daemon en segundo plano que escucha y responde mensajes de Telegram.
+    - Si detecta RENDER_EXTERNAL_URL, autoconfigura el webhook en Render.
+    - Si no hay webhook activo, realiza long-polling continuo con getUpdates.
+    """
+    global _DEMONIO_TELEGRAM_INICIADO
+    if _DEMONIO_TELEGRAM_INICIADO:
+        return
+    _DEMONIO_TELEGRAM_INICIADO = True
+
+    def worker():
+        time.sleep(3)  # Margen de inicio del servidor
+        token = Config.TELEGRAM_BOT_TOKEN
+        if not token:
+            print("[TELEGRAM] TELEGRAM_BOT_TOKEN ausente. Demonio no activo.")
+            return
+
+        render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+        if render_url and render_url.startswith("http"):
+            webhook_target = f"{render_url.rstrip('/')}/telegram/webhook"
+            print(f"[TELEGRAM] Configurando webhook en Render: {webhook_target}")
+            try:
+                configurar_webhook_telegram(webhook_target)
+            except Exception as e_wh:
+                print(f"[TELEGRAM] Aviso al configurar webhook: {e_wh}")
+
+        print("[TELEGRAM] Demonio de escucha y respuestas automáticas iniciado.")
+        offset = None
+
+        while True:
+            try:
+                # Comprobar si hay un webhook activo en Telegram
+                info = obtener_info_webhook()
+                current_url = info.get("result", {}).get("url", "")
+                if current_url:
+                    # Webhook configurado: Telegram notificará directamente al endpoint /telegram/webhook
+                    time.sleep(30)
+                    continue
+
+                # Si no hay webhook configurado, operar en modo polling continuo
+                url = f"https://api.telegram.org/bot{token}/getUpdates"
+                params = {"timeout": 10}
+                if offset is not None:
+                    params["offset"] = offset
+
+                resp = requests.get(url, params=params, timeout=20)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("ok"):
+                        updates = data.get("result", [])
+                        for upd in updates:
+                            offset = upd.get("update_id", 0) + 1
+                            try:
+                                with app.app_context():
+                                    procesar_mensaje_entrante_telegram(upd)
+                            except Exception as e_proc:
+                                print(f"[TELEGRAM] Error procesando update {upd.get('update_id')}: {e_proc}")
+                elif resp.status_code == 409:
+                    # 409 Conflict: webhook activado en simultáneo
+                    time.sleep(15)
+                else:
+                    time.sleep(3)
+            except Exception:
+                time.sleep(5)
+
+    thread = threading.Thread(target=worker, name="TelegramBotDaemon", daemon=True)
+    thread.start()
+
